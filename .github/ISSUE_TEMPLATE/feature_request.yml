@@ -1,0 +1,102 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE]: "
+labels: ["enhancement", "triage"]
+assignees: []
+
+body:
+  - type: dropdown
+    id: implementation
+    attributes:
+      label: Affected Implementation(s)
+      description: Which implementations should include this feature?
+      multiple: true
+      options:
+        - All implementations
+        - Java (Spring Boot)
+        - Python (FastAPI)
+        - Go
+        - Rust
+        - Infrastructure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature_type
+    attributes:
+      label: Feature Type
+      options:
+        - New Domain Capability
+        - API Enhancement
+        - Security Improvement
+        - Performance Optimization
+        - Compliance/Regulatory
+        - Developer Experience
+        - Operations/Monitoring
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this solve?
+      placeholder: As a [user type], I need [capability] so that [business value]...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this work?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider?
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 - Critical (Security, Compliance, Data Loss)
+        - P1 - High (Major business impact)
+        - P2 - Medium (Moderate business value)
+        - P3 - Low (Nice to have)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Requirements Checklist
+      options:
+        - label: This feature maintains backward API compatibility
+        - label: This feature does not weaken security posture
+        - label: This feature includes audit trail requirements
+        - label: This feature considers GDPR/CCPA implications
+        - label: This feature has clear acceptance criteria
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know when this is complete?
+      placeholder: |
+        - [ ] Given..., when..., then...
+        - [ ] API endpoint documented in OpenAPI spec
+        - [ ] Integration tests pass
+        - [ ] Security scan passes
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Mockups, diagrams, related issues

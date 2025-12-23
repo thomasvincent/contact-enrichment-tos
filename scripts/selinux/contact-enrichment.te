@@ -1,0 +1,256 @@
+policy_module(contact_enrichment, 1.0.0)
+
+########################################
+# Contact Enrichment Platform SELinux Policy
+#
+# This policy enforces mandatory access control for the contact
+# enrichment platform following trusted operating system principles.
+#
+# Security Domains:
+# - contact_enrichment_t: Main application process
+# - contact_enrichment_db_t: Database access context
+# - contact_enrichment_crypto_t: Cryptographic operations
+# - contact_enrichment_audit_t: Audit logging
+#
+# Author: Security Team
+# Version: 1.0.0
+########################################
+
+require {
+    type unconfined_t;
+    type postgresql_t;
+    type postgresql_port_t;
+    type syslogd_t;
+    class process { transition siginh };
+    class tcp_socket { name_connect };
+    class file { read write open append };
+    class dir { search };
+}
+
+########################################
+# Type Declarations
+########################################
+
+# Main application domain
+type contact_enrichment_t;
+type contact_enrichment_exec_t;
+
+# Database access domain (higher privilege)
+type contact_enrichment_db_t;
+
+# Cryptographic operations domain (isolated)
+type contact_enrichment_crypto_t;
+
+# Audit logging domain (write-only to audit trail)
+type contact_enrichment_audit_t;
+
+# Application files
+type contact_enrichment_conf_t;
+type contact_enrichment_log_t;
+type contact_enrichment_tmp_t;
+type contact_enrichment_var_t;
+
+# Data classification types
+type contact_enrichment_data_public_t;
+type contact_enrichment_data_internal_t;
+type contact_enrichment_data_confidential_t;
+type contact_enrichment_data_restricted_t;
+
+########################################
+# Domain Transitions
+########################################
+
+# Allow init to transition to our domain
+domain_type(contact_enrichment_t)
+domain_entry_file(contact_enrichment_t, contact_enrichment_exec_t)
+
+# Allow application to transition to database domain when needed
+domain_auto_trans(contact_enrichment_t, contact_enrichment_db_t, contact_enrichment_db_t)
+
+# Allow application to transition to crypto domain for encryption
+domain_auto_trans(contact_enrichment_t, contact_enrichment_crypto_t, contact_enrichment_crypto_t)
+
+# Allow application to transition to audit domain for logging
+domain_auto_trans(contact_enrichment_t, contact_enrichment_audit_t, contact_enrichment_audit_t)
+
+########################################
+# Main Application Domain (contact_enrichment_t)
+########################################
+
+# Allow application to read configuration
+allow contact_enrichment_t contact_enrichment_conf_t:file { read open getattr };
+allow contact_enrichment_t contact_enrichment_conf_t:dir { search getattr };
+
+# Allow application to write logs
+allow contact_enrichment_t contact_enrichment_log_t:file { create write open append getattr };
+allow contact_enrichment_t contact_enrichment_log_t:dir { add_name write };
+
+# Allow application to use temporary files
+allow contact_enrichment_t contact_enrichment_tmp_t:file { create read write open unlink };
+allow contact_enrichment_t contact_enrichment_tmp_t:dir { add_name remove_name write };
+
+# Allow application to manage variable data
+allow contact_enrichment_t contact_enrichment_var_t:file { create read write open unlink };
+allow contact_enrichment_t contact_enrichment_var_t:dir { add_name remove_name write search };
+
+# Network access for API serving
+allow contact_enrichment_t self:tcp_socket { create bind listen accept read write };
+allow contact_enrichment_t http_port_t:tcp_socket { name_bind };
+
+# Allow connection to Redis cache
+allow contact_enrichment_t redis_port_t:tcp_socket { name_connect };
+
+########################################
+# Database Domain (contact_enrichment_db_t)
+########################################
+
+# Allow database domain to connect to PostgreSQL
+allow contact_enrichment_db_t postgresql_port_t:tcp_socket { name_connect };
+allow contact_enrichment_db_t postgresql_t:tcp_socket { read write };
+
+# Multi-Level Security: Data classification enforcement
+# Only allow access to data at or below clearance level
+
+# Public data (lowest level) - all domains can access
+allow contact_enrichment_db_t contact_enrichment_data_public_t:file { read open };
+
+# Internal data - requires INTERNAL clearance or higher
+allow contact_enrichment_db_t contact_enrichment_data_internal_t:file { read open };
+
+# Confidential data - requires CONFIDENTIAL clearance
+# (Only specific processes with high clearance can access)
+type_transition contact_enrichment_db_t contact_enrichment_data_confidential_t:process contact_enrichment_db_t;
+
+# Restricted data - highest level, very limited access
+# Requires explicit compartment access
+type_transition contact_enrichment_db_t contact_enrichment_data_restricted_t:process contact_enrichment_db_t;
+
+########################################
+# Cryptographic Domain (contact_enrichment_crypto_t)
+########################################
+
+# Allow crypto domain to access HSM device
+allow contact_enrichment_crypto_t device_t:chr_file { read write open ioctl };
+
+# Allow crypto domain to read crypto configuration
+allow contact_enrichment_crypto_t contact_enrichment_conf_t:file { read open };
+
+# Deny crypto domain from writing to logs (prevent key leakage)
+dontaudit contact_enrichment_crypto_t contact_enrichment_log_t:file { write append };
+
+# Allow crypto domain to use /dev/urandom for secure random
+allow contact_enrichment_crypto_t urandom_device_t:chr_file { read open };
+
+########################################
+# Audit Domain (contact_enrichment_audit_t)
+########################################
+
+# Allow audit domain to write to audit log (WORM storage)
+allow contact_enrichment_audit_t auditd_log_t:file { create write open append };
+allow contact_enrichment_audit_t auditd_log_t:dir { add_name write };
+
+# Allow audit domain to send to syslog
+allow contact_enrichment_audit_t syslogd_t:unix_dgram_socket { sendto };
+
+# Deny audit domain from reading back audit logs (write-only)
+neverallow contact_enrichment_audit_t auditd_log_t:file { read };
+
+########################################
+# Multi-Category Security (MCS)
+########################################
+
+# Define compartments for need-to-know access
+# c0 = PII
+# c1 = Financial
+# c2 = Health
+# c3 = Legal Hold
+# c4 = Executive
+
+# Example: Process needs both PII and Financial compartments to access certain data
+constrain file { read write } (
+    (l1 dom l2) and
+    (c1 in (c2))
+);
+
+########################################
+# Bell-LaPadula Model Enforcement
+########################################
+
+# No read-up: Cannot read data at higher classification
+mlsconstrain file { read open }
+    (l1 dom l2);
+
+# No write-down: Cannot write data at lower classification
+# (prevents classified information leakage to lower levels)
+mlsconstrain file { write append }
+    (l1 domby l2);
+
+########################################
+# Biba Integrity Model Enforcement
+########################################
+
+# No read-down: Don't read less trustworthy data
+# (prevents contamination from low-integrity sources)
+mlsconstrain file { read }
+    (h1 dom h2);
+
+# No write-up: Don't write to more trustworthy data
+# (prevents corruption of high-integrity data)
+mlsconstrain file { write }
+    (h1 domby h2);
+
+########################################
+# Process Isolation
+########################################
+
+# Prevent other processes from transitioning to our domains
+neverallow { domain -contact_enrichment_t } contact_enrichment_t:process { transition };
+
+# Prevent our processes from transitioning to unconfined
+neverallow contact_enrichment_t unconfined_t:process { transition };
+
+# Prevent ptrace (debugging) of our processes
+neverallow { domain -contact_enrichment_t } contact_enrichment_t:process { ptrace };
+
+########################################
+# File Context Rules
+########################################
+
+# Application binary
+/usr/local/bin/contact-enrichment    -- gen_context(system_u:object_r:contact_enrichment_exec_t,s0)
+
+# Configuration files
+/etc/contact-enrichment(/.*)?           gen_context(system_u:object_r:contact_enrichment_conf_t,s0)
+
+# Log files
+/var/log/contact-enrichment(/.*)?       gen_context(system_u:object_r:contact_enrichment_log_t,s0)
+
+# Temporary files
+/tmp/contact-enrichment(/.*)?           gen_context(system_u:object_r:contact_enrichment_tmp_t,s0)
+
+# Variable data
+/var/lib/contact-enrichment(/.*)?       gen_context(system_u:object_r:contact_enrichment_var_t,s0)
+
+########################################
+# Audit Rules
+########################################
+
+# Audit all access to restricted data
+auditallow { domain } contact_enrichment_data_restricted_t:file { read write };
+
+# Audit all domain transitions
+auditallow { domain } contact_enrichment_t:process { transition };
+
+# Audit all crypto operations
+auditallow contact_enrichment_crypto_t device_t:chr_file { read write };
+
+########################################
+# Labeled Networking (Optional)
+########################################
+
+# If using labeled IPSec/NetLabel:
+# Enforce that only appropriately labeled network traffic
+# can reach sensitive endpoints
+
+# Example: Restricted data can only be transmitted over
+# connections labeled s0:c0.c1 (PII + Financial compartments)

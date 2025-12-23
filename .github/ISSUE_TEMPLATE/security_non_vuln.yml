@@ -1,0 +1,79 @@
+name: Security Hardening (Non-Vulnerability)
+description: Suggest security improvements that are not active vulnerabilities
+title: "[SECURITY]: "
+labels: ["security", "hardening"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Important Notice
+        This template is for **non-sensitive** security improvements only.
+
+        **For actual vulnerabilities, email security@yourcompany.com**
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Security Category
+      options:
+        - Encryption/Cryptography
+        - Access Control
+        - Audit Logging
+        - Input Validation
+        - Dependency Management
+        - SELinux Policy
+        - Network Security
+        - Secrets Management
+        - Compliance Control
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_state
+    attributes:
+      label: Current Security Posture
+      description: What's the current implementation?
+    validations:
+      required: true
+
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Proposed Improvement
+      description: How should we harden this?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: threat_model
+    attributes:
+      label: Threat Model
+      description: What threat does this mitigate?
+      options:
+        - Insider Threat
+        - External Attacker
+        - Supply Chain Attack
+        - Privilege Escalation
+        - Data Exfiltration
+        - Denial of Service
+        - Compliance Violation
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk_assessment
+    attributes:
+      label: Risk Assessment
+      description: Likelihood and impact if not addressed
+      value: |
+        **Likelihood**: [Low/Medium/High]
+        **Impact**: [Low/Medium/High/Critical]
+        **Risk Score**: [Calculated]
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing Plan
+      description: How will we verify this improvement?
