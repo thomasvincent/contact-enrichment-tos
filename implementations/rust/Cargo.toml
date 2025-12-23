@@ -1,0 +1,36 @@
+[package]
+name = "contact-enrichment-tos"
+version = "1.0.0"
+edition = "2021"
+authors = ["Thomas Vincent <platform@yourcompany.com>"]
+description = "TOS-compliant contact enrichment platform - Rust implementation"
+
+[dependencies]
+actix-web = "4.4"
+tokio = { version = "1.35", features = ["full"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+ring = "0.17"
+jsonwebtoken = "9.2"
+redis = { version = "0.24", features = ["tokio-comp"] }
+async-trait = "0.1"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[dev-dependencies]
+testcontainers = "0.15"
+mockall = "0.12"
+
+[[bin]]
+name = "contact-enrichment"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
