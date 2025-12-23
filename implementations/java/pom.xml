@@ -34,7 +34,7 @@
 
         <!-- Dependency Versions -->
         <spring-boot.version>3.4.1</spring-boot.version>
-        <postgresql.version>42.7.4</postgresql.version>
+        <postgresql.version>42.7.7</postgresql.version>
         <flyway.version>10.21.0</flyway.version>
         <hibernate.version>6.6.4.Final</hibernate.version>
         <bouncy-castle.version>1.79</bouncy-castle.version>
