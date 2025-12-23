@@ -33,25 +33,26 @@
         <maven.compiler.failOnWarning>true</maven.compiler.failOnWarning>
 
         <!-- Dependency Versions -->
-        <spring-boot.version>3.2.1</spring-boot.version>
-        <postgresql.version>42.7.1</postgresql.version>
-        <flyway.version>10.4.1</flyway.version>
-        <hibernate.version>6.4.1.Final</hibernate.version>
-        <bouncy-castle.version>1.77</bouncy-castle.version>
-        <tink.version>1.12.0</tink.version>
-        <owasp-encoder.version>1.2.3</owasp-encoder.version>
-        <jjwt.version>0.12.3</jjwt.version>
+        <spring-boot.version>3.4.1</spring-boot.version>
+        <postgresql.version>42.7.4</postgresql.version>
+        <flyway.version>10.21.0</flyway.version>
+        <hibernate.version>6.6.4.Final</hibernate.version>
+        <bouncy-castle.version>1.79</bouncy-castle.version>
+        <tink.version>1.15.0</tink.version>
+        <owasp-encoder.version>1.3.1</owasp-encoder.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <caffeine.version>3.1.8</caffeine.version>
 
         <!-- Testing -->
-        <junit.version>5.10.1</junit.version>
-        <testcontainers.version>1.19.3</testcontainers.version>
-        <archunit.version>1.2.1</archunit.version>
+        <junit.version>5.11.4</junit.version>
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <archunit.version>1.3.0</archunit.version>
 
         <!-- Code Quality -->
-        <jacoco.version>0.8.11</jacoco.version>
-        <spotbugs.version>4.8.3</spotbugs.version>
-        <pmd.version>3.21.2</pmd.version>
-        <checkstyle.version>3.3.1</checkstyle.version>
+        <jacoco.version>0.8.12</jacoco.version>
+        <spotbugs.version>4.8.6</spotbugs.version>
+        <pmd.version>3.26.0</pmd.version>
+        <checkstyle.version>3.5.0</checkstyle.version>
     </properties>
 
     <dependencies>
@@ -101,6 +102,18 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- High-Performance Cache -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
         </dependency>
 
         <!-- Database -->
