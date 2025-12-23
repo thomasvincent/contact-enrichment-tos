@@ -178,6 +178,50 @@ public class Contact {
     }
 
     /**
+     * Reconstitute Contact from persistence (no domain events emitted).
+     * Used by repository when loading from database.
+     *
+     * @param id Contact ID
+     * @param canonicalEmail Encrypted email
+     * @param emailHash Email hash
+     * @param fullName Encrypted full name (optional)
+     * @param securityLabel Security label
+     * @param createdAt Creation timestamp
+     * @param createdBy Creator ID
+     * @param updatedAt Last update timestamp
+     * @param version Optimistic lock version
+     * @return Reconstituted Contact instance
+     */
+    public static Contact reconstitute(
+            UUID id,
+            EncryptedValue canonicalEmail,
+            byte[] emailHash,
+            EncryptedValue fullName,
+            SecurityLabel securityLabel,
+            Instant createdAt,
+            UUID createdBy,
+            Instant updatedAt,
+            Long version) {
+
+        Contact contact = new Contact(
+            id,
+            canonicalEmail,
+            emailHash,
+            fullName,
+            securityLabel,
+            createdBy
+        );
+
+        // Override timestamps and version from persistence
+        contact.createdAt = createdAt;
+        contact.updatedAt = updatedAt;
+        contact.version = version;
+
+        // No domain events emitted for reconstitution
+        return contact;
+    }
+
+    /**
      * Add an enriched attribute with temporal validity.
      *
      * @param attributeType Type of attribute
