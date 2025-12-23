@@ -37,7 +37,7 @@
         <postgresql.version>42.7.1</postgresql.version>
         <flyway.version>10.4.1</flyway.version>
         <hibernate.version>6.4.1.Final</hibernate.version>
-        <bouncy-castle.version>1.77</bouncy-castle.version>
+        <bouncy-castle.version>1.78</bouncy-castle.version>
         <tink.version>1.12.0</tink.version>
         <owasp-encoder.version>1.2.3</owasp-encoder.version>
         <jjwt.version>0.12.3</jjwt.version>
