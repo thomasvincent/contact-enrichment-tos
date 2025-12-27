@@ -5,7 +5,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use contact_enrichment_tos::api::{handlers, middleware::SecurityContextMiddleware};
 use contact_enrichment_tos::infrastructure::{
-    crypto::RingCryptoService, security::TrustedSecurityKernel,
+    crypto::{CryptoService, RingCryptoService},
+    repository::ContactRepository,
+    security::{SecurityKernel, TrustedSecurityKernel},
+    mem_repository::MemContactRepository,
 };
 
 /// Application configuration.
@@ -20,7 +23,7 @@ struct AppConfig {
 impl AppConfig {
     fn from_env() -> Self {
         Self {
-            host: std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
+host: std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
             port: std::env::var("PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -54,12 +57,23 @@ async fn main() -> std::io::Result<()> {
     );
 
     // Initialize services
-    let crypto_service = Arc::new(RingCryptoService::new());
-    let security_kernel = Arc::new(TrustedSecurityKernel::new());
+    let crypto_service: Arc<dyn CryptoService + Send + Sync> = Arc::new(RingCryptoService::new());
+    let security_kernel: Arc<dyn SecurityKernel + Send + Sync> = Arc::new(TrustedSecurityKernel::new());
 
-    // TODO: Initialize database pool
-    // let db_pool = Arc::new(create_db_pool(&config.database_url).await?);
-    // let repository = Arc::new(PostgresContactRepository::new(db_pool));
+    // Repository: memstore by default; enable pg-repo feature to wire Postgres
+    #[cfg(feature = "dev-memstore")]
+    let repository: Arc<dyn ContactRepository + Send + Sync> = Arc::new(MemContactRepository::new());
+
+    #[cfg(not(feature = "dev-memstore"))]
+    let repository: Arc<dyn ContactRepository + Send + Sync> = {
+        use contact_enrichment_tos::infrastructure::repository::PostgresContactRepository;
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(10)
+            .connect(&config.database_url)
+            .await
+            .expect("Failed to connect to Postgres");
+        Arc::new(PostgresContactRepository::new(Arc::new(pool)))
+    };
 
     let bind_address = format!("{}:{}", config.host, config.port);
     tracing::info!("Listening on {}", bind_address);
@@ -71,9 +85,9 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(SecurityContextMiddleware)
             // Shared state
-            // .app_data(web::Data::from(crypto_service.clone()))
-            // .app_data(web::Data::from(security_kernel.clone()))
-            // .app_data(web::Data::from(repository.clone()))
+            .app_data(web::Data::new(crypto_service.clone()))
+            .app_data(web::Data::new(security_kernel.clone()))
+            .app_data(web::Data::new(repository.clone()))
             // Routes
             .service(
                 web::scope("/api/v1")
@@ -108,6 +122,11 @@ fn init_tracing() {
 /// This is a critical security requirement for TOS compliance.
 /// Application will refuse to start if SELinux is not enforcing.
 fn verify_selinux_enforcing() {
+    // Human note: allow local/dev runs on macOS/Linux without SELinux via SKIP_SELINUX_CHECK=true
+    if std::env::var("SKIP_SELINUX_CHECK").as_deref() == Ok("true") {
+        tracing::warn!("Skipping SELinux check (SKIP_SELINUX_CHECK=true)");
+        return;
+    }
     match std::process::Command::new("getenforce").output() {
         Ok(output) => {
             let mode = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -131,12 +150,12 @@ fn verify_selinux_enforcing() {
     }
 }
 
-/// Create database connection pool.
-///
-/// TODO: Implement with SQLx
-/// async fn create_db_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
-///     sqlx::postgres::PgPoolOptions::new()
-///         .max_connections(20)
-///         .connect(database_url)
-///         .await
-/// }
+// Create database connection pool.
+//
+// TODO: Implement with SQLx
+// async fn create_db_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
+//     sqlx::postgres::PgPoolOptions::new()
+//         .max_connections(20)
+//         .connect(database_url)
+//         .await
+// }

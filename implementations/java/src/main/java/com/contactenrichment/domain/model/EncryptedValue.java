@@ -10,7 +10,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
 import java.util.Base64;
 import java.util.Objects;
 
@@ -46,11 +45,9 @@ import java.util.Objects;
 @Embeddable
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA requirement
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode
-public final class EncryptedValue implements Serializable {
+public final class EncryptedValue {
 
-    private static final long serialVersionUID = 1L;
 
     /**
      * Encrypted ciphertext (base64-encoded for storage).

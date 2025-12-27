@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for better analysis
+          fetch-depth: 0
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -35,22 +35,68 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run Dependency Check (OWASP)
-        run: |
-          cd implementations/java
-          ./mvnw org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=7 \
-            -DsuppressionFile=.dependency-check-suppressions.xml
-
-      - name: Run Snyk Security Scan
-        uses: snyk/actions/maven@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Cache Dependency-Check data directory
+        uses: actions/cache@v4
         with:
-          args: --severity-threshold=high --fail-on=upgradable
+          path: ~/.cache/depcheck
+          key: ${{ runner.os }}-depcheck-${{ hashFiles('implementations/java/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-depcheck-
 
-      - name: Run Trivy Vulnerability Scanner
+      - name: Write Maven toolchains.xml (JDK 21)
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/toolchains.xml << 'EOF'
+          <toolchains>
+            <toolchain>
+              <type>jdk</type>
+              <provides>
+                <version>21</version>
+                <vendor>any</vendor>
+              </provides>
+              <configuration>
+                <jdkHome>${JAVA_HOME}</jdkHome>
+              </configuration>
+            </toolchain>
+          </toolchains>
+          EOF
+
+      - name: Run Maven security-scan profile (SBOM + OWASP DC)
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          ./implementations/java/mvnw -f implementations/java/pom.xml -P security-scan -DskipTests -Djacoco.skip=true -B verify
+
+      - name: Upload Dependency-Check SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: implementations/java/target/security-reports/dependency-check-report.sarif
+
+      - name: Upload SBOM (CycloneDX)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            implementations/java/target/sbom/bom.xml
+            implementations/java/target/sbom/bom.json
+
+      - name: Run OSV-Scanner (source + SBOM)
+        uses: google/osv-scanner-action@v1
+        with:
+          scan-args: |
+            --format sarif --output osv-results.sarif \
+            --lockfile implementations/java/pom.xml \
+            --sbom implementations/java/target/sbom/bom.json
+
+      - name: Upload OSV results to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv-results.sarif
+
+      - name: Run Trivy (filesystem)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'

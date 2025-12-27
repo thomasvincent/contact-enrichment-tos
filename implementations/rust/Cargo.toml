@@ -5,6 +5,14 @@ edition = "2021"
 authors = ["Thomas Vincent <platform@yourcompany.com>"]
 description = "TOS-compliant contact enrichment platform - Rust implementation"
 
+[features]
+# Default to in-memory repository for fast dev cycles
+default = ["dev-memstore"]
+# Use in-memory repository implementation
+dev-memstore = []
+# Enable Postgres repository path (use with --no-default-features or by disabling dev-memstore)
+pg-repo = []
+
 [dependencies]
 actix-web = "4.4"
 tokio = { version = "1.35", features = ["full"] }
@@ -19,9 +27,12 @@ redis = { version = "0.24", features = ["tokio-comp"] }
 async-trait = "0.1"
 thiserror = "1.0"
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "std", "json"] }
+base64 = "0.21"
+futures = "0.3"
 
 [dev-dependencies]
+actix-rt = "2"
 testcontainers = "0.15"
 mockall = "0.12"
 

@@ -69,18 +69,17 @@ where
 /// 2. Extract principal ID and clearance from token claims
 /// 3. Verify MFA status
 /// 4. Extract declared processing purpose
-fn extract_security_context(req: &ServiceRequest) -> SecurityContext {
+fn extract_security_context(_req: &ServiceRequest) -> SecurityContext {
     // Mock implementation - in production would validate JWT
-    use std::collections::HashSet;
 
     SecurityContext {
         request_id: Uuid::new_v4(),
         principal_id: Uuid::new_v4(), // Would come from JWT
-        clearance: SecurityLabel {
-            confidentiality: ConfidentialityLevel::Confidential,
-            integrity: IntegrityLevel::High,
-            compartments: HashSet::from(["PII".to_string()]),
-        },
+        clearance: SecurityLabel::new(
+            ConfidentialityLevel::Confidential,
+            IntegrityLevel::High,
+            vec!["PII".to_string()],
+        ),
         mfa_verified: true, // Would come from JWT claims
         declared_purpose: Some("contact_enrichment".to_string()),
     }

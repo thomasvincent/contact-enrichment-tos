@@ -2,7 +2,8 @@
 use crate::domain::contact::EncryptedValue;
 use ring::aead::{Aad, BoundKey, Nonce, NonceSequence, OpeningKey, SealingKey, UnboundKey, AES_256_GCM};
 use ring::rand::{SecureRandom, SystemRandom};
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Cryptographic service interface.
 pub trait CryptoService: Send + Sync {
@@ -29,7 +30,8 @@ pub trait CryptoService: Send + Sync {
 /// - Zero-copy where possible
 pub struct RingCryptoService {
     rng: SystemRandom,
-    // In production: would integrate with AWS KMS or HashiCorp Vault
+    // DEV-ONLY: in-memory DEK store; replace with KMS/Vault in production
+    dek_store: Arc<Mutex<HashMap<String, Vec<u8>>>>,
     // kms_client: Arc<KmsClient>,
 }
 
@@ -37,6 +39,7 @@ impl RingCryptoService {
     pub fn new() -> Self {
         Self {
             rng: SystemRandom::new(),
+            dek_store: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -175,14 +178,21 @@ impl RingCryptoService {
         // Mock implementation - would call KMS in production
         use base64::{engine::general_purpose, Engine as _};
         let encoded = general_purpose::URL_SAFE_NO_PAD.encode(dek);
-        Ok(format!("dek_{}_{}", key_id, &encoded[..16]))
+        let dek_id = format!("dek_{}_{}", key_id, &encoded[..16]);
+        self.dek_store.lock().unwrap().insert(dek_id.clone(), dek.to_vec());
+        Ok(dek_id)
     }
 
     /// Mock DEK decryption - in production would use AWS KMS.
-    fn decrypt_dek_with_kms(&self, _encrypted_dek_id: &str) -> Result<Vec<u8>, CryptoError> {
-        // Mock implementation - would call KMS in production
-        // For now, generate a consistent DEK (INSECURE - for demo only)
-        self.generate_dek()
+    fn decrypt_dek_with_kms(&self, encrypted_dek_id: &str) -> Result<Vec<u8>, CryptoError> {
+        // Mock implementation - retrieve from in-memory store (DEV ONLY)
+        self
+            .dek_store
+            .lock()
+            .unwrap()
+            .get(encrypted_dek_id)
+            .cloned()
+            .ok_or(CryptoError::KmsError)
     }
 }
 

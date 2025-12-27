@@ -1,7 +1,5 @@
 package com.contactenrichment.application;
 
-import com.contactenrichment.domain.model.ConfidentialityLevel;
-import com.contactenrichment.domain.model.IntegrityLevel;
 import com.contactenrichment.domain.model.SecurityLabel;
 import com.contactenrichment.infrastructure.security.SecurityContext;
 import org.springframework.security.core.Authentication;
@@ -42,31 +40,42 @@ public class SecurityContextProvider {
             .requestId(UUID.randomUUID())
             .principalId(extractPrincipalId(authentication))
             .clearance(extractClearance(authentication))
+            .compartments(extractCompartments(authentication))
             .mfaVerified(extractMfaStatus(authentication))
             .declaredPurpose(extractPurpose(authentication))
             .build();
     }
 
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private UUID extractPrincipalId(Authentication auth) {
         // TODO: Extract from JWT subject claim
         return UUID.randomUUID();
     }
 
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private SecurityLabel extractClearance(Authentication auth) {
         // TODO: Extract from JWT custom claims
         return new SecurityLabel(
-            ConfidentialityLevel.CONFIDENTIAL,
-            IntegrityLevel.HIGH,
+            SecurityLabel.ConfidentialityLevel.CONFIDENTIAL,
+            SecurityLabel.IntegrityLevel.HIGH,
             Set.of("PII"),
             Set.of()
         );
     }
 
+    @SuppressWarnings("PMD.UnusedFormalParameter")
+    private java.util.Set<String> extractCompartments(Authentication auth) {
+        // TODO: Extract from JWT custom claim (e.g., "app_comps")
+        return java.util.Set.of("PII");
+    }
+
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private boolean extractMfaStatus(Authentication auth) {
         // TODO: Extract from JWT amr (authentication methods reference) claim
         return true;
     }
 
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private String extractPurpose(Authentication auth) {
         // TODO: Extract from JWT custom claim
         return "contact_enrichment";

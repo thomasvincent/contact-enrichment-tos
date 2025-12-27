@@ -17,25 +17,26 @@ public interface CryptoService {
      * Encrypt data using envelope encryption.
      *
      * @param plaintext Data to encrypt
-     * @param context Security context
+     * @param keyId Key identifier (e.g., "email-key", "name-key")
      * @return Encrypted value with metadata
      */
-    EncryptedValue encrypt(byte[] plaintext, SecurityContext context);
+    EncryptedValue encrypt(byte[] plaintext, String keyId);
 
     /**
-     * Decrypt data after authorization check.
+     * Decrypt data.
      *
      * @param encryptedValue Encrypted value
-     * @param context Security context
-     * @return Decrypted plaintext
+     * @return Decrypted plaintext bytes
      */
-    String decrypt(EncryptedValue encryptedValue, SecurityContext context);
+    byte[] decrypt(EncryptedValue encryptedValue);
 
     /**
-     * Generate cryptographically secure random bytes.
-     *
-     * @param numBytes Number of bytes
-     * @return Random bytes
+     * Hash data (e.g., SHA-256) for lookups.
      */
-    byte[] generateRandom(int numBytes);
+    byte[] hash(byte[] data);
+
+    /**
+     * Verify integrity (GCM tag) where applicable.
+     */
+    boolean verifyIntegrity(EncryptedValue encryptedValue);
 }

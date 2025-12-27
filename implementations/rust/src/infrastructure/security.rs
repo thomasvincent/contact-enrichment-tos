@@ -58,6 +58,8 @@ impl SecurityKernel for TrustedSecurityKernel {
         data_label: &SecurityLabel,
     ) -> Result<(), SecurityError> {
         // Bell-LaPadula: No read up
+        // Human note: clearance must dominate data label (level + compartments). This prevents
+        // accidental data leaks from higher classifications to lower-cleared principals.
         if !context.clearance.dominates(data_label) {
             tracing::warn!(
                 principal_id = %context.principal_id,
@@ -74,13 +76,13 @@ impl SecurityKernel for TrustedSecurityKernel {
         // Check compartments (need-to-know)
         if !context
             .clearance
-            .compartments
-            .is_superset(&data_label.compartments)
+            .compartments()
+            .is_superset(data_label.compartments())
         {
             tracing::warn!(
                 principal_id = %context.principal_id,
-                required_compartments = ?data_label.compartments,
-                actual_compartments = ?context.clearance.compartments,
+required_compartments = ?data_label.compartments(),
+                actual_compartments = ?context.clearance.compartments(),
                 "Authorization denied: missing compartments"
             );
 
@@ -104,11 +106,11 @@ impl SecurityKernel for TrustedSecurityKernel {
         data_label: &SecurityLabel,
     ) -> Result<(), SecurityError> {
         // Biba: No write down (integrity)
-        if data_label.integrity > context.clearance.integrity {
+        if data_label.integrity() > context.clearance.integrity() {
             tracing::warn!(
                 principal_id = %context.principal_id,
-                required_integrity = ?data_label.integrity,
-                actual_integrity = ?context.clearance.integrity,
+                required_integrity = ?data_label.integrity(),
+                actual_integrity = ?context.clearance.integrity(),
                 "Authorization denied: insufficient integrity for write"
             );
 
@@ -133,10 +135,10 @@ impl SecurityKernel for TrustedSecurityKernel {
         use crate::domain::contact::IntegrityLevel;
 
         // Require minimum Medium integrity for contact creation
-        if context.clearance.integrity < IntegrityLevel::Medium {
+        if context.clearance.integrity() < IntegrityLevel::Medium {
             tracing::warn!(
                 principal_id = %context.principal_id,
-                actual_integrity = ?context.clearance.integrity,
+                actual_integrity = ?context.clearance.integrity(),
                 "Authorization denied: insufficient integrity for contact creation"
             );
 
@@ -236,20 +238,20 @@ mod tests {
         let context = SecurityContext {
             request_id: Uuid::new_v4(),
             principal_id: Uuid::new_v4(),
-            clearance: SecurityLabel {
-                confidentiality: ConfidentialityLevel::Confidential,
-                integrity: IntegrityLevel::High,
-                compartments: HashSet::from(["PII".to_string()]),
-            },
+            clearance: SecurityLabel::new(
+                ConfidentialityLevel::Confidential,
+                IntegrityLevel::High,
+                vec!["PII".to_string()],
+            ),
             mfa_verified: true,
             declared_purpose: Some("testing".to_string()),
         };
 
-        let data_label = SecurityLabel {
-            confidentiality: ConfidentialityLevel::Internal,
-            integrity: IntegrityLevel::Medium,
-            compartments: HashSet::new(),
-        };
+        let data_label = SecurityLabel::new(
+            ConfidentialityLevel::Internal,
+            IntegrityLevel::Medium,
+            vec![]
+        );
 
         assert!(kernel.authorize_read(&context, &data_label).is_ok());
     }
@@ -261,20 +263,20 @@ mod tests {
         let context = SecurityContext {
             request_id: Uuid::new_v4(),
             principal_id: Uuid::new_v4(),
-            clearance: SecurityLabel {
-                confidentiality: ConfidentialityLevel::Internal,
-                integrity: IntegrityLevel::Medium,
-                compartments: HashSet::new(),
-            },
+            clearance: SecurityLabel::new(
+                ConfidentialityLevel::Internal,
+                IntegrityLevel::Medium,
+                vec![]
+            ),
             mfa_verified: true,
             declared_purpose: Some("testing".to_string()),
         };
 
-        let data_label = SecurityLabel {
-            confidentiality: ConfidentialityLevel::Confidential,
-            integrity: IntegrityLevel::High,
-            compartments: HashSet::from(["PII".to_string()]),
-        };
+        let data_label = SecurityLabel::new(
+            ConfidentialityLevel::Confidential,
+            IntegrityLevel::High,
+            vec!["PII".to_string()]
+        );
 
         assert!(kernel.authorize_read(&context, &data_label).is_err());
     }

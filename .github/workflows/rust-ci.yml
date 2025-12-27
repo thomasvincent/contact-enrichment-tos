@@ -1,0 +1,30 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            implementations/rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('implementations/rust/Cargo.lock') }}
+      - name: Run tests (default features)
+        working-directory: implementations/rust
+        env:
+          RUST_LOG: info
+        run: cargo test --all --locked --verbose

@@ -219,3 +219,23 @@ See [GitHub Projects](https://github.com/yourusername/contact-enrichment-tos/pro
 ---
 
 **Built with security and compliance at the core.**
+
+## Build Profiles and Security Outputs
+
+- Local fast (developer speed):
+  - Command: `mvn -f implementations/java/pom.xml -P local-fast -DskipTests compile`
+  - Purpose: quick compile without gates.
+
+- CI full (treat warnings as errors, quality gates; Dependency-Check skipped for now):
+  - Command: `mvn -f implementations/java/pom.xml -P ci-full -DskipTests -Djacoco.skip=true verify`
+  - Output: bootable jar under `implementations/java/target/`.
+
+- Security scan (SBOM + OWASP Dependency-Check + SARIF reports):
+  - Command: `mvn -f implementations/java/pom.xml -P security-scan -DskipTests -Djacoco.skip=true verify`
+  - SBOM: `implementations/java/target/sbom/bom.xml` and `bom.json` (CycloneDX).
+  - Dependency-Check reports: `implementations/java/target/security-reports/` (HTML, JSON, SARIF).
+  - Notes: Supply NVD_API_KEY for best results; otherwise the build runs fail-open for update errors.
+
+### GitHub Actions
+- Security Scanning job runs on PRs/push; uploads SARIF (Dependency-Check, OSV, Trivy) to code scanning and publishes SBOM artifacts.
+- Nightly Security Scan (`.github/workflows/security-nightly.yml`) refreshes caches and re-runs full scanning daily.

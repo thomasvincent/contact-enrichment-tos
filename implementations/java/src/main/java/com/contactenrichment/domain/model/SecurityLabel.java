@@ -11,7 +11,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.owasp.encoder.Encode;
 
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
@@ -36,11 +35,9 @@ import java.util.Set;
 @Embeddable
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA requirement
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode
-public final class SecurityLabel implements Serializable {
+public final class SecurityLabel {
 
-    private static final long serialVersionUID = 1L;
 
     /**
      * Confidentiality level following Bell-LaPadula model.

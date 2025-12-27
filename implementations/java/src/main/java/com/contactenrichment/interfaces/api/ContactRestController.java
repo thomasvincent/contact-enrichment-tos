@@ -1,6 +1,6 @@
 package com.contactenrichment.interfaces.api;
 
-import com.contactenrichment.application.ContactService;
+import com.contactenrichment.application.ContactApplicationService;
 import com.contactenrichment.interfaces.api.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -87,11 +87,15 @@ public class ContactRestController {
     public ResponseEntity<ContactResponse> createContact(
             @Valid @RequestBody CreateContactRequest request) {
 
-        log.info("Creating contact with email: {}", maskEmail(request.getEmail()));
+        if (log.isInfoEnabled()) {
+            log.info("Creating contact with email: {}", maskEmail(request.getEmail()));
+        }
 
         ContactResponse response = contactService.createContact(request);
 
-        log.info("Contact created successfully: id={}", response.getId());
+        if (log.isInfoEnabled()) {
+            log.info("Contact created successfully: id={}", response.getId());
+        }
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
@@ -131,7 +135,9 @@ public class ContactRestController {
     })
     public ResponseEntity<ContactResponse> getContact(@PathVariable UUID id) {
 
-        log.info("Retrieving contact: id={}", id);
+        if (log.isInfoEnabled()) {
+            log.info("Retrieving contact: id={}", id);
+        }
 
         ContactResponse response = contactService.getContact(id);
 
@@ -180,12 +186,16 @@ public class ContactRestController {
             @PathVariable UUID id,
             @Valid @RequestBody EnrichContactRequest request) {
 
-        log.info("Enriching contact: id={}, attributeType={}",
-            id, request.getAttributeType());
+        if (log.isInfoEnabled()) {
+            log.info("Enriching contact: id={}, attributeType={}",
+                id, request.getAttributeType());
+        }
 
         ContactResponse response = contactService.enrichContact(id, request);
 
-        log.info("Contact enriched successfully: id={}", id);
+        if (log.isInfoEnabled()) {
+            log.info("Contact enriched successfully: id={}", id);
+        }
 
         return ResponseEntity.ok(response);
     }
@@ -220,11 +230,15 @@ public class ContactRestController {
     })
     public ResponseEntity<Void> deleteContact(@PathVariable UUID id) {
 
-        log.warn("Deleting contact: id={}", id);
+        if (log.isWarnEnabled()) {
+            log.warn("Deleting contact: id={}", id);
+        }
 
         contactService.deleteContact(id);
 
-        log.warn("Contact deleted successfully: id={}", id);
+        if (log.isWarnEnabled()) {
+            log.warn("Contact deleted successfully: id={}", id);
+        }
 
         return ResponseEntity.noContent().build();
     }
@@ -257,7 +271,9 @@ public class ContactRestController {
     public ResponseEntity<ContactResponse> searchByEmailHash(
             @RequestParam("emailHash") String emailHash) {
 
-        log.info("Searching contact by email hash");
+        if (log.isInfoEnabled()) {
+            log.info("Searching contact by email hash");
+        }
 
         ContactResponse response = contactService.searchByEmailHash(emailHash);
 

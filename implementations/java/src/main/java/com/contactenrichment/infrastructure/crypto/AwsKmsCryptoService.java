@@ -122,13 +122,17 @@ public class AwsKmsCryptoService implements CryptoService {
 
             byte[] plaintext = cipher.doFinal(ciphertextWithTag);
 
-            log.debug("Decrypted {} bytes with DEK {}",
-                plaintext.length, encryptedValue.getKeyId());
+            if (log.isDebugEnabled()) {
+                log.debug("Decrypted {} bytes with DEK {}",
+                    plaintext.length, encryptedValue.getKeyId());
+            }
 
             return plaintext;
 
         } catch (Exception e) {
-            log.error("Decryption failed for key {}", encryptedValue.getKeyId(), e);
+            if (log.isErrorEnabled()) {
+                log.error("Decryption failed for key {}", encryptedValue.getKeyId(), e);
+            }
             throw new CryptoException("Failed to decrypt data", e);
         }
     }
@@ -152,7 +156,9 @@ public class AwsKmsCryptoService implements CryptoService {
             decrypt(encryptedValue);
             return true;
         } catch (CryptoException e) {
-            log.warn("Integrity check failed: {}", e.getMessage());
+            if (log.isWarnEnabled()) {
+                log.warn("Integrity check failed: {}", e.getMessage());
+            }
             return false;
         }
     }
@@ -208,7 +214,8 @@ public class AwsKmsCryptoService implements CryptoService {
     /**
      * Exception thrown when cryptographic operations fail.
      */
-    public static class CryptoException extends RuntimeException {
+public static class CryptoException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
         public CryptoException(String message) {
             super(message);
         }
