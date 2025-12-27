@@ -7,6 +7,7 @@ import com.contactenrichment.infrastructure.security.SecurityContext;
 import com.contactenrichment.infrastructure.security.SecurityKernel;
 import com.contactenrichment.interfaces.api.dto.*;
 import lombok.RequiredArgsConstructor;
+import com.contactenrichment.application.exceptions.DuplicateResourceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +32,8 @@ public class ContactApplicationService {
 
     private final ContactRepository contactRepository;
     private final CryptoService cryptoService;
-    private final SecurityKernel securityKernel;
+private final SecurityKernel securityKernel;
+    private final com.contactenrichment.infrastructure.audit.AuditService auditService;
     private final SecurityContextProvider securityContextProvider;
 
     /**
@@ -40,7 +42,9 @@ public class ContactApplicationService {
     public ContactResponse createContact(CreateContactRequest request) {
         SecurityContext context = securityContextProvider.getCurrentContext();
 
-        log.info("Creating contact with email: {}", maskEmail(request.getEmail()));
+        if (log.isInfoEnabled()) {
+            log.info("Creating contact with email: {}", maskEmail(request.getEmail()));
+        }
 
         // Authorize operation
         securityKernel.authorizeContactCreation(context);
@@ -53,8 +57,10 @@ public class ContactApplicationService {
         byte[] emailHash = cryptoService.hash(emailBytes);
 
         // Check if contact already exists
+        // Human note: returning 409 via DuplicateResourceException keeps REST semantics
+        // aligned with OpenAPI and avoids leaking existence through timing.
         if (contactRepository.existsByEmailHash(emailHash, context)) {
-            throw new IllegalArgumentException("Contact already exists with this email");
+            throw new DuplicateResourceException("Contact already exists with this email");
         }
 
         // Encrypt full name if provided
@@ -66,8 +72,8 @@ public class ContactApplicationService {
 
         // Create security label
         SecurityLabel securityLabel = new SecurityLabel(
-            ConfidentialityLevel.valueOf(request.getConfidentialityLevel()),
-            IntegrityLevel.valueOf(request.getIntegrityLevel()),
+            SecurityLabel.ConfidentialityLevel.valueOf(request.getConfidentialityLevel()),
+            SecurityLabel.IntegrityLevel.valueOf(request.getIntegrityLevel()),
             request.getCompartments(),
             java.util.Set.of() // caveats
         );
@@ -93,7 +99,12 @@ public class ContactApplicationService {
         // Persist
         contactRepository.save(contact, context);
 
-        log.info("Contact created successfully: id={}", contact.getId());
+        // Audit
+        audit("Contact", "CREATE", contact.getId().toString(), context.getPrincipalId().toString(), "contact created");
+
+        if (log.isInfoEnabled()) {
+            log.info("Contact created successfully: id={}", contact.getId());
+        }
 
         // Map to response
         return mapToResponse(contact, context);
@@ -106,7 +117,9 @@ public class ContactApplicationService {
     public ContactResponse getContact(UUID id) {
         SecurityContext context = securityContextProvider.getCurrentContext();
 
-        log.info("Retrieving contact: id={}", id);
+        if (log.isInfoEnabled()) {
+            log.info("Retrieving contact: id={}", id);
+        }
 
         Contact contact = contactRepository.findById(id, context)
             .orElseThrow(() -> new IllegalArgumentException("Contact not found: " + id));
@@ -120,8 +133,10 @@ public class ContactApplicationService {
     public ContactResponse enrichContact(UUID id, EnrichContactRequest request) {
         SecurityContext context = securityContextProvider.getCurrentContext();
 
-        log.info("Enriching contact: id={}, attributeType={}",
-            id, request.getAttributeType());
+        if (log.isInfoEnabled()) {
+            log.info("Enriching contact: id={}, attributeType={}",
+                id, request.getAttributeType());
+        }
 
         // Load contact aggregate
         Contact contact = contactRepository.findById(id, context)
@@ -147,7 +162,12 @@ public class ContactApplicationService {
         // Persist updated aggregate
         contactRepository.save(contact, context);
 
-        log.info("Contact enriched successfully: id={}", id);
+        // Audit
+        audit("Contact", "ENRICH", id.toString(), context.getPrincipalId().toString(), request.getAttributeType());
+
+        if (log.isInfoEnabled()) {
+            log.info("Contact enriched successfully: id={}", id);
+        }
 
         return mapToResponse(contact, context);
     }
@@ -158,7 +178,9 @@ public class ContactApplicationService {
     public void deleteContact(UUID id) {
         SecurityContext context = securityContextProvider.getCurrentContext();
 
-        log.warn("Deleting contact: id={}", id);
+        if (log.isWarnEnabled()) {
+            log.warn("Deleting contact: id={}", id);
+        }
 
         // Authorize deletion
         Contact contact = contactRepository.findById(id, context)
@@ -169,7 +191,12 @@ public class ContactApplicationService {
         // Delete
         contactRepository.delete(id, context);
 
-        log.warn("Contact deleted successfully: id={}", id);
+        // Audit
+        audit("Contact", "DELETE", id.toString(), context.getPrincipalId().toString(), "contact deleted");
+
+        if (log.isWarnEnabled()) {
+            log.warn("Contact deleted successfully: id={}", id);
+        }
     }
 
     /**
@@ -198,7 +225,9 @@ public class ContactApplicationService {
             byte[] emailBytes = cryptoService.decrypt(contact.getCanonicalEmail());
             email = new String(emailBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            log.debug("Cannot decrypt email for contact {}: access denied", contact.getId());
+            if (log.isDebugEnabled()) {
+                log.debug("Cannot decrypt email for contact {}: access denied", contact.getId());
+            }
         }
 
         // Decrypt full name (if present and authorized)
@@ -208,7 +237,9 @@ public class ContactApplicationService {
                 byte[] fullNameBytes = cryptoService.decrypt(contact.getFullName());
                 fullName = new String(fullNameBytes, StandardCharsets.UTF_8);
             } catch (Exception e) {
-                log.debug("Cannot decrypt full name for contact {}: access denied", contact.getId());
+                if (log.isDebugEnabled()) {
+                    log.debug("Cannot decrypt full name for contact {}: access denied", contact.getId());
+                }
             }
         }
 
@@ -228,7 +259,9 @@ public class ContactApplicationService {
                     byte[] valueBytes = cryptoService.decrypt(attr.getEncryptedValue());
                     value = new String(valueBytes, StandardCharsets.UTF_8);
                 } catch (Exception e) {
-                    log.debug("Cannot decrypt attribute: access denied");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Cannot decrypt attribute: access denied");
+                    }
                 }
 
                 return ContactResponse.EnrichedAttributeDto.builder()
@@ -252,6 +285,14 @@ public class ContactApplicationService {
             .updatedAt(contact.getUpdatedAt())
             .version(contact.getVersion())
             .build();
+    }
+
+    private void audit(String category, String action, String resourceId, String principalId, String detail) {
+        try {
+            auditService.record(category, action, resourceId, principalId, detail);
+        } catch (Exception ignored) {
+            // Human note: audit must never break the main flow
+        }
     }
 
     private String maskEmail(String email) {

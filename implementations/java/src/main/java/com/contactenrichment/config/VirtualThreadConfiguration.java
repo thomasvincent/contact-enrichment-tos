@@ -82,7 +82,7 @@ public class VirtualThreadConfiguration {
         executor.setMaxPoolSize(Runtime.getRuntime().availableProcessors() * 2);
         executor.setQueueCapacity(1000);
         executor.setThreadNamePrefix("cpu-intensive-");
-        executor.setRejectedExecutionHandler(new ThreadPoolTaskExecutor.CallerRunsPolicy());
+executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
         executor.initialize();
@@ -117,9 +117,11 @@ public class VirtualThreadConfiguration {
             long freeMemory = runtime.freeMemory();
             long usedMemory = totalMemory - freeMemory;
 
-            log.debug("Virtual Thread Environment - Memory: {}MB used / {}MB total",
-                usedMemory / 1024 / 1024,
-                totalMemory / 1024 / 1024);
+            if (log.isDebugEnabled()) {
+                log.debug("Virtual Thread Environment - Memory: {}MB used / {}MB total",
+                    usedMemory / 1024 / 1024,
+                    totalMemory / 1024 / 1024);
+            }
         }
     }
 }

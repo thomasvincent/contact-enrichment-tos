@@ -68,10 +68,30 @@ public class GlobalExceptionHandler {
             .validationErrors(validationErrors)
             .build();
 
-        log.warn("Validation error: {} validation failures on {}",
-            validationErrors.size(), request.getRequestURI());
+        if (log.isWarnEnabled()) {
+            log.warn("Validation error: {} validation failures on {}",
+                validationErrors.size(), request.getRequestURI());
+        }
 
         return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    // Human note: Map duplicate resource to HTTP 409 (Conflict) to match controller docs
+    @ExceptionHandler(com.contactenrichment.application.exceptions.DuplicateResourceException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicate(
+            com.contactenrichment.application.exceptions.DuplicateResourceException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+            .requestId(UUID.randomUUID())
+            .timestamp(Instant.now())
+            .status(HttpStatus.CONFLICT.value())
+            .error("Conflict")
+            .message(ex.getMessage())
+            .path(request.getRequestURI())
+            .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
     /**
@@ -91,7 +111,9 @@ public class GlobalExceptionHandler {
             .path(request.getRequestURI())
             .build();
 
-        log.warn("Access denied: {} on {}", ex.getMessage(), request.getRequestURI());
+        if (log.isWarnEnabled()) {
+            log.warn("Access denied: {} on {}", ex.getMessage(), request.getRequestURI());
+        }
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
@@ -113,7 +135,9 @@ public class GlobalExceptionHandler {
             .path(request.getRequestURI())
             .build();
 
-        log.warn("Optimistic lock exception on {}", request.getRequestURI());
+        if (log.isWarnEnabled()) {
+            log.warn("Optimistic lock exception on {}", request.getRequestURI());
+        }
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
@@ -135,7 +159,9 @@ public class GlobalExceptionHandler {
             .path(request.getRequestURI())
             .build();
 
-        log.warn("Illegal argument: {} on {}", ex.getMessage(), request.getRequestURI());
+        if (log.isWarnEnabled()) {
+            log.warn("Illegal argument: {} on {}", ex.getMessage(), request.getRequestURI());
+        }
 
         return ResponseEntity.badRequest().body(errorResponse);
     }
@@ -157,7 +183,9 @@ public class GlobalExceptionHandler {
             .path(request.getRequestURI())
             .build();
 
-        log.warn("Illegal state: {} on {}", ex.getMessage(), request.getRequestURI());
+        if (log.isWarnEnabled()) {
+            log.warn("Illegal state: {} on {}", ex.getMessage(), request.getRequestURI());
+        }
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
@@ -179,7 +207,9 @@ public class GlobalExceptionHandler {
             .path(request.getRequestURI())
             .build();
 
-        log.error("Security exception: {} on {}", ex.getMessage(), request.getRequestURI());
+        if (log.isErrorEnabled()) {
+            log.error("Security exception: {} on {}", ex.getMessage(), request.getRequestURI());
+        }
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
@@ -201,8 +231,10 @@ public class GlobalExceptionHandler {
             .path(request.getRequestURI())
             .build();
 
-        log.error("Unhandled exception on {}: {}",
-            request.getRequestURI(), ex.getMessage(), ex);
+        if (log.isErrorEnabled()) {
+            log.error("Unhandled exception on {}: {}",
+                request.getRequestURI(), ex.getMessage(), ex);
+        }
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }

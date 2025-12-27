@@ -49,6 +49,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableJpaAuditing
 @EnableTransactionManagement
 @EnableAsync
+@org.springframework.scheduling.annotation.EnableScheduling
 @EnableAspectJAutoProxy
 @ConfigurationPropertiesScan
 @Slf4j
@@ -75,12 +76,19 @@ public class ContactEnrichmentApplication {
             """);
     }
 
-    /**
+/**
      * Verify SELinux is in enforcing mode (critical security requirement).
+     * Note: developers can bypass this check in non-production by setting APP_SKIP_SELINUX_CHECK=true.
      */
     private static void verifySelinuxEnforcing() {
+        if (Boolean.parseBoolean(System.getenv().getOrDefault("APP_SKIP_SELINUX_CHECK", "false"))) {
+            log.warn("Skipping SELinux check (APP_SKIP_SELINUX_CHECK=true)");
+            return;
+        }
         try {
-            Process process = Runtime.getRuntime().exec("getenforce");
+            Process process = new ProcessBuilder("getenforce")
+                .redirectErrorStream(true)
+                .start();
             String mode = new String(process.getInputStream().readAllBytes()).trim();
 
             if (!"Enforcing".equals(mode)) {
@@ -96,19 +104,23 @@ public class ContactEnrichmentApplication {
         }
     }
 
-    /**
-     * Verify TLS 1.3 is enabled and weak ciphers are disabled.
+/**
+     * Verify TLS 1.3 is enabled and weak protocols are disabled.
+     * Implementation detail: compare exact protocol names (equals) to avoid substring pitfalls
+     * (e.g., "TLSv1.3" contains "TLSv1").
      */
     private static void verifyTlsConfiguration() {
         // Check enabled protocols
-        String[] enabledProtocols = System.getProperty("jdk.tls.client.protocols", "").split(",");
+        String prop = System.getProperty("jdk.tls.client.protocols", "");
+        String[] enabledProtocols = prop.isBlank() ? new String[0] : prop.split(",");
         boolean hasTls13 = false;
 
-        for (String protocol : enabledProtocols) {
-            if ("TLSv1.3".equals(protocol.trim())) {
+        for (String p : enabledProtocols) {
+            String protocol = p.trim();
+            if ("TLSv1.3".equals(protocol)) {
                 hasTls13 = true;
             }
-            if (protocol.contains("TLSv1") || protocol.contains("TLSv1.1")) {
+            if ("TLSv1".equals(protocol) || "TLSv1.1".equals(protocol)) {
                 log.error("SECURITY VIOLATION: Weak TLS protocol enabled: {}", protocol);
                 System.exit(1);
             }

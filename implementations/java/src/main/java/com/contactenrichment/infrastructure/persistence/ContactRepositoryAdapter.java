@@ -44,26 +44,18 @@ public class ContactRepositoryAdapter implements ContactRepository {
      * Set PostgreSQL session variables for RLS enforcement.
      */
     private void applySecurityContext(SecurityContext context) {
-        // Set clearance levels
-        entityManager.createNativeQuery(
-            "SET LOCAL app.clearance_conf = :conf"
-        ).setParameter("conf", context.getClearance().getConfidentiality().ordinal())
-         .executeUpdate();
+        // Delegate to shared utility to avoid duplication
+        RlsSessionUtil.applySecurityContext(entityManager, context);
 
-        entityManager.createNativeQuery(
-            "SET LOCAL app.clearance_integ = :integ"
-        ).setParameter("integ", context.getClearance().getIntegrity().ordinal())
-         .executeUpdate();
-
-        // Set principal ID for audit
-        entityManager.createNativeQuery(
-            "SET LOCAL app.principal_id = :principalId"
-        ).setParameter("principalId", context.getPrincipalId().toString())
-         .executeUpdate();
-
-        log.debug("Applied RLS context: principal={}, clearance={}",
-            context.getPrincipalId(),
-            context.getClearance());
+        if (log.isDebugEnabled()) {
+            String compartments = String.join(",",
+                (context.getCompartments() != null && !context.getCompartments().isEmpty())
+                    ? context.getCompartments()
+                    : context.getClearance().getCompartments()
+            );
+            log.debug("Applied RLS context: principal={}, clearance={}, compartments={}",
+                context.getPrincipalId(), context.getClearance(), compartments);
+        }
     }
 
     @Override
@@ -73,10 +65,14 @@ public class ContactRepositoryAdapter implements ContactRepository {
         Optional<Contact> result = springDataRepository.findById(id);
 
         if (result.isPresent()) {
-            log.info("Contact retrieved: id={}, principal={}",
-                id, context.getPrincipalId());
+            if (log.isInfoEnabled()) {
+                log.info("Contact retrieved: id={}, principal={}",
+                    id, context.getPrincipalId());
+            }
         } else {
-            log.debug("Contact not found or access denied: id={}", id);
+            if (log.isDebugEnabled()) {
+                log.debug("Contact not found or access denied: id={}", id);
+            }
         }
 
         return result;
@@ -89,8 +85,10 @@ public class ContactRepositoryAdapter implements ContactRepository {
         Optional<Contact> result = springDataRepository.findByCanonicalEmailHash(emailHash);
 
         if (result.isPresent()) {
-            log.info("Contact retrieved by email hash: id={}, principal={}",
-                result.get().getId(), context.getPrincipalId());
+            if (log.isInfoEnabled()) {
+                log.info("Contact retrieved by email hash: id={}, principal={}",
+                    result.get().getId(), context.getPrincipalId());
+            }
         }
 
         return result;
@@ -102,8 +100,10 @@ public class ContactRepositoryAdapter implements ContactRepository {
 
         springDataRepository.save(contact);
 
-        log.info("Contact persisted: id={}, version={}, principal={}",
-            contact.getId(), contact.getVersion(), context.getPrincipalId());
+        if (log.isInfoEnabled()) {
+            log.info("Contact persisted: id={}, version={}, principal={}",
+                contact.getId(), contact.getVersion(), context.getPrincipalId());
+        }
     }
 
     @Override
@@ -112,8 +112,10 @@ public class ContactRepositoryAdapter implements ContactRepository {
 
         springDataRepository.deleteById(id);
 
-        log.warn("Contact deleted: id={}, principal={}",
-            id, context.getPrincipalId());
+        if (log.isWarnEnabled()) {
+            log.warn("Contact deleted: id={}, principal={}",
+                id, context.getPrincipalId());
+        }
     }
 
     @Override

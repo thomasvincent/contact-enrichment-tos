@@ -42,6 +42,21 @@ impl SecurityLabel {
         }
     }
 
+    /// Returns the confidentiality level (Bell–LaPadula classification).
+    pub fn confidentiality(&self) -> ConfidentialityLevel {
+        self.confidentiality
+    }
+
+    /// Returns the integrity level (Biba model).
+    pub fn integrity(&self) -> IntegrityLevel {
+        self.integrity
+    }
+
+    /// Returns the set of compartments (need-to-know categories).
+    pub fn compartments(&self) -> &HashSet<String> {
+        &self.compartments
+    }
+
     pub fn confidential_pii() -> Self {
         Self::new(
             ConfidentialityLevel::Confidential,
@@ -102,6 +117,7 @@ impl EnrichedAttribute {
 }
 
 /// Contact aggregate root.
+#[derive(Clone)]
 pub struct Contact {
     pub id: Uuid,
     pub canonical_email: EncryptedValue,

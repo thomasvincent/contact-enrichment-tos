@@ -41,6 +41,10 @@ public interface ContactRepository {
      */
     Optional<Contact> findByEmailHash(byte[] emailHash, SecurityContext context);
 
+    boolean existsByEmailHash(byte[] emailHash, SecurityContext context);
+
+    void delete(UUID id, SecurityContext context);
+
     /**
      * Save contact (create or update).
      *
@@ -51,23 +55,4 @@ public interface ContactRepository {
      */
     void save(Contact contact, SecurityContext context);
 
-    /**
-     * Search contacts matching criteria.
-     *
-     * <p>Results automatically filtered by caller's security clearance.
-     *
-     * @param criteria Search criteria
-     * @param context Security context
-     * @return List of accessible contacts
-     */
-    List<Contact> findByCriteria(ContactSearchCriteria criteria, SecurityContext context);
-
-    /**
-     * Count contacts matching criteria.
-     *
-     * @param criteria Search criteria
-     * @param context Security context
-     * @return Count of accessible contacts
-     */
-    long countByCriteria(ContactSearchCriteria criteria, SecurityContext context);
 }

@@ -1,7 +1,5 @@
 package com.contactenrichment.infrastructure.security;
 
-import com.contactenrichment.domain.model.ConfidentialityLevel;
-import com.contactenrichment.domain.model.IntegrityLevel;
 import com.contactenrichment.domain.model.SecurityLabel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,14 +42,17 @@ public class TrustedSecurityKernel implements SecurityKernel {
     public void authorizeRead(SecurityContext context, SecurityLabel dataLabel) {
         UUID requestId = UUID.randomUUID();
 
-        log.debug("Authorization check [{}]: principal={}, operation=READ, dataLabel={}",
-            requestId, context.getPrincipalId(), dataLabel);
+        if (log.isDebugEnabled()) {
+            log.debug("Authorization check [{}]: principal={}, operation=READ, dataLabel={}",
+                requestId, context.getPrincipalId(), dataLabel);
+        }
 
         // Bell-LaPadula: No read up
         if (!context.getClearance().dominates(dataLabel)) {
-            log.warn("AUTHORIZATION DENIED [{}]: Clearance insufficient for read - principal={}, " +
-                "required={}, actual={}",
-                requestId, context.getPrincipalId(), dataLabel, context.getClearance());
+            if (log.isWarnEnabled()) {
+                log.warn("AUTHORIZATION DENIED [{}]: Clearance insufficient for read - principal={}, required={}, actual={}",
+                    requestId, context.getPrincipalId(), dataLabel, context.getClearance());
+            }
 
             auditAuthorizationDenial(context, "READ", dataLabel, "INSUFFICIENT_CLEARANCE");
 
@@ -62,10 +63,11 @@ public class TrustedSecurityKernel implements SecurityKernel {
 
         // Check compartments (need-to-know)
         if (!context.getClearance().getCompartments().containsAll(dataLabel.getCompartments())) {
-            log.warn("AUTHORIZATION DENIED [{}]: Missing compartments - principal={}, " +
-                "required={}, actual={}",
-                requestId, context.getPrincipalId(),
-                dataLabel.getCompartments(), context.getClearance().getCompartments());
+            if (log.isWarnEnabled()) {
+                log.warn("AUTHORIZATION DENIED [{}]: Missing compartments - principal={}, required={}, actual={}",
+                    requestId, context.getPrincipalId(),
+                    dataLabel.getCompartments(), context.getClearance().getCompartments());
+            }
 
             auditAuthorizationDenial(context, "READ", dataLabel, "MISSING_COMPARTMENTS");
 
@@ -77,8 +79,10 @@ public class TrustedSecurityKernel implements SecurityKernel {
         // Check caveats (special handling requirements)
         validateCaveats(context, dataLabel);
 
-        log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=READ",
-            requestId, context.getPrincipalId());
+        if (log.isInfoEnabled()) {
+            log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=READ",
+                requestId, context.getPrincipalId());
+        }
 
         auditAuthorizationSuccess(context, "READ", dataLabel);
     }
@@ -87,15 +91,18 @@ public class TrustedSecurityKernel implements SecurityKernel {
     public void authorizeWrite(SecurityContext context, SecurityLabel dataLabel) {
         UUID requestId = UUID.randomUUID();
 
-        log.debug("Authorization check [{}]: principal={}, operation=WRITE, dataLabel={}",
-            requestId, context.getPrincipalId(), dataLabel);
+        if (log.isDebugEnabled()) {
+            log.debug("Authorization check [{}]: principal={}, operation=WRITE, dataLabel={}",
+                requestId, context.getPrincipalId(), dataLabel);
+        }
 
         // Biba: No write down (integrity)
         if (dataLabel.getIntegrity().ordinal() > context.getClearance().getIntegrity().ordinal()) {
-            log.warn("AUTHORIZATION DENIED [{}]: Integrity level insufficient - principal={}, " +
-                "required={}, actual={}",
-                requestId, context.getPrincipalId(),
-                dataLabel.getIntegrity(), context.getClearance().getIntegrity());
+            if (log.isWarnEnabled()) {
+                log.warn("AUTHORIZATION DENIED [{}]: Integrity level insufficient - principal={}, required={}, actual={}",
+                    requestId, context.getPrincipalId(),
+                    dataLabel.getIntegrity(), context.getClearance().getIntegrity());
+            }
 
             auditAuthorizationDenial(context, "WRITE", dataLabel, "INSUFFICIENT_INTEGRITY");
 
@@ -107,8 +114,10 @@ public class TrustedSecurityKernel implements SecurityKernel {
         // For writes, also check we can read the data (Bell-LaPadula)
         authorizeRead(context, dataLabel);
 
-        log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=WRITE",
-            requestId, context.getPrincipalId());
+        if (log.isInfoEnabled()) {
+            log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=WRITE",
+                requestId, context.getPrincipalId());
+        }
 
         auditAuthorizationSuccess(context, "WRITE", dataLabel);
     }
@@ -117,14 +126,17 @@ public class TrustedSecurityKernel implements SecurityKernel {
     public void authorizeContactCreation(SecurityContext context) {
         UUID requestId = UUID.randomUUID();
 
-        log.debug("Authorization check [{}]: principal={}, operation=CREATE_CONTACT",
-            requestId, context.getPrincipalId());
+        if (log.isDebugEnabled()) {
+            log.debug("Authorization check [{}]: principal={}, operation=CREATE_CONTACT",
+                requestId, context.getPrincipalId());
+        }
 
         // Require minimum integrity level for contact creation
-        if (context.getClearance().getIntegrity().ordinal() < IntegrityLevel.MEDIUM.ordinal()) {
-            log.warn("AUTHORIZATION DENIED [{}]: Insufficient integrity for contact creation - " +
-                "principal={}, actual={}",
-                requestId, context.getPrincipalId(), context.getClearance().getIntegrity());
+if (context.getClearance().getIntegrity().ordinal() < SecurityLabel.IntegrityLevel.MEDIUM.ordinal()) {
+            if (log.isWarnEnabled()) {
+                log.warn("AUTHORIZATION DENIED [{}]: Insufficient integrity for contact creation - principal={}, actual={}",
+                    requestId, context.getPrincipalId(), context.getClearance().getIntegrity());
+            }
 
             auditAuthorizationDenial(context, "CREATE_CONTACT", null, "INSUFFICIENT_INTEGRITY");
 
@@ -135,8 +147,10 @@ public class TrustedSecurityKernel implements SecurityKernel {
 
         // Require MFA for sensitive operations
         if (!context.isMfaVerified()) {
-            log.warn("AUTHORIZATION DENIED [{}]: MFA required - principal={}",
-                requestId, context.getPrincipalId());
+            if (log.isWarnEnabled()) {
+                log.warn("AUTHORIZATION DENIED [{}]: MFA required - principal={}",
+                    requestId, context.getPrincipalId());
+            }
 
             auditAuthorizationDenial(context, "CREATE_CONTACT", null, "MFA_REQUIRED");
 
@@ -147,8 +161,10 @@ public class TrustedSecurityKernel implements SecurityKernel {
 
         // Require declared purpose for GDPR/CCPA compliance
         if (context.getDeclaredPurpose() == null || context.getDeclaredPurpose().isBlank()) {
-            log.warn("AUTHORIZATION DENIED [{}]: No processing purpose declared - principal={}",
-                requestId, context.getPrincipalId());
+            if (log.isWarnEnabled()) {
+                log.warn("AUTHORIZATION DENIED [{}]: No processing purpose declared - principal={}",
+                    requestId, context.getPrincipalId());
+            }
 
             auditAuthorizationDenial(context, "CREATE_CONTACT", null, "NO_PURPOSE_DECLARED");
 
@@ -157,8 +173,10 @@ public class TrustedSecurityKernel implements SecurityKernel {
             );
         }
 
-        log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=CREATE_CONTACT",
-            requestId, context.getPrincipalId());
+        if (log.isInfoEnabled()) {
+            log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=CREATE_CONTACT",
+                requestId, context.getPrincipalId());
+        }
 
         auditAuthorizationSuccess(context, "CREATE_CONTACT", null);
     }
@@ -171,18 +189,20 @@ public class TrustedSecurityKernel implements SecurityKernel {
 
         UUID requestId = UUID.randomUUID();
 
-        log.debug("Authorization check [{}]: principal={}, operation=ENRICH, " +
-            "contactLabel={}, attributeLabel={}",
-            requestId, context.getPrincipalId(), contactLabel, attributeLabel);
+        if (log.isDebugEnabled()) {
+            log.debug("Authorization check [{}]: principal={}, operation=ENRICH, contactLabel={}, attributeLabel={}",
+                requestId, context.getPrincipalId(), contactLabel, attributeLabel);
+        }
 
         // Must be able to write to contact
         authorizeWrite(context, contactLabel);
 
         // Attribute label must not exceed contact label (downgrade prevention)
         if (!contactLabel.dominates(attributeLabel)) {
-            log.warn("AUTHORIZATION DENIED [{}]: Attribute label exceeds contact label - " +
-                "principal={}, contactLabel={}, attributeLabel={}",
-                requestId, context.getPrincipalId(), contactLabel, attributeLabel);
+            if (log.isWarnEnabled()) {
+                log.warn("AUTHORIZATION DENIED [{}]: Attribute label exceeds contact label - principal={}, contactLabel={}, attributeLabel={}",
+                    requestId, context.getPrincipalId(), contactLabel, attributeLabel);
+            }
 
             auditAuthorizationDenial(context, "ENRICH", attributeLabel,
                 "ATTRIBUTE_EXCEEDS_CONTACT_LABEL");
@@ -192,8 +212,10 @@ public class TrustedSecurityKernel implements SecurityKernel {
             );
         }
 
-        log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=ENRICH",
-            requestId, context.getPrincipalId());
+        if (log.isInfoEnabled()) {
+            log.info("AUTHORIZATION GRANTED [{}]: principal={}, operation=ENRICH",
+                requestId, context.getPrincipalId());
+        }
 
         auditAuthorizationSuccess(context, "ENRICH", attributeLabel);
     }
@@ -201,8 +223,9 @@ public class TrustedSecurityKernel implements SecurityKernel {
     /**
      * Validate special caveats on security labels.
      */
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private void validateCaveats(SecurityContext context, SecurityLabel dataLabel) {
-        for (String caveat : dataLabel.getCaveats()) {
+for (String caveat : dataLabel.getHandlingCaveats()) {
             switch (caveat) {
                 case "ORIGINATOR_CONTROLLED":
                     // Only data originator can access
@@ -218,7 +241,9 @@ public class TrustedSecurityKernel implements SecurityKernel {
                     break;
 
                 default:
-                    log.warn("Unknown caveat: {}", caveat);
+                    if (log.isWarnEnabled()) {
+                        log.warn("Unknown caveat: {}", caveat);
+                    }
             }
         }
     }
@@ -231,13 +256,14 @@ public class TrustedSecurityKernel implements SecurityKernel {
             String operation,
             SecurityLabel dataLabel) {
 
-        log.info("AUDIT: Authorization granted - principal={}, operation={}, " +
-            "dataLabel={}, requestId={}, timestamp={}",
-            context.getPrincipalId(),
-            operation,
-            dataLabel,
-            context.getRequestId(),
-            Instant.now());
+        if (log.isInfoEnabled()) {
+            log.info("AUDIT: Authorization granted - principal={}, operation={}, dataLabel={}, requestId={}, timestamp={}",
+                context.getPrincipalId(),
+                operation,
+                dataLabel,
+                context.getRequestId(),
+                Instant.now());
+        }
 
         // TODO: Send to audit service/SIEM
         // auditService.recordSuccess(context, operation, dataLabel);
@@ -252,14 +278,15 @@ public class TrustedSecurityKernel implements SecurityKernel {
             SecurityLabel dataLabel,
             String reason) {
 
-        log.warn("AUDIT: Authorization denied - principal={}, operation={}, " +
-            "dataLabel={}, reason={}, requestId={}, timestamp={}",
-            context.getPrincipalId(),
-            operation,
-            dataLabel,
-            reason,
-            context.getRequestId(),
-            Instant.now());
+        if (log.isWarnEnabled()) {
+            log.warn("AUDIT: Authorization denied - principal={}, operation={}, dataLabel={}, reason={}, requestId={}, timestamp={}",
+                context.getPrincipalId(),
+                operation,
+                dataLabel,
+                reason,
+                context.getRequestId(),
+                Instant.now());
+        }
 
         // TODO: Send to audit service/SIEM with high priority
         // auditService.recordDenial(context, operation, dataLabel, reason);
@@ -268,7 +295,8 @@ public class TrustedSecurityKernel implements SecurityKernel {
     /**
      * Exception thrown when authorization fails.
      */
-    public static class AccessDeniedException extends RuntimeException {
+public static class AccessDeniedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
         public AccessDeniedException(String message) {
             super(message);
         }

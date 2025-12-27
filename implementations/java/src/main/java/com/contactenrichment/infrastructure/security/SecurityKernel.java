@@ -1,48 +1,25 @@
 package com.contactenrichment.infrastructure.security;
 
+import com.contactenrichment.domain.model.SecurityLabel;
+
 /**
  * Security Kernel - Trusted Computing Base Interface.
- *
- * <p>Central enforcement point for all security decisions.
- *
- * @author Security Team
- * @since 1.0.0
  */
 public interface SecurityKernel {
 
-    /**
-     * Authorize contact creation.
-     *
-     * @param context Security context
-     * @throws SecurityException if not authorized
-     */
     void authorizeContactCreation(SecurityContext context);
 
-    /**
-     * Authorize contact access.
-     *
-     * @param context Security context
-     * @param resourceLabel Security label of resource
-     * @throws SecurityException if not authorized
-     */
-    void authorizeContactAccess(SecurityContext context, com.contactenrichment.domain.model.SecurityLabel resourceLabel);
+    void authorizeRead(SecurityContext context, SecurityLabel dataLabel);
 
-    /**
-     * Verify session token.
-     *
-     * @param token JWT or session token
-     * @return Security context if valid
-     */
-    SecurityContext verifySession(String token);
+    void authorizeWrite(SecurityContext context, SecurityLabel dataLabel);
 
-    /**
-     * Create audit event.
-     *
-     * @param context Security context
-     * @param category Event category
-     * @param action Event action
-     * @param outcome Event outcome
-     * @param details Details
-     */
-    void audit(SecurityContext context, String category, String action, String outcome, String details);
+    void authorizeEnrichment(SecurityContext context, SecurityLabel contactLabel, SecurityLabel attributeLabel);
+
+    default SecurityContext verifySession(String token) {
+        throw new UnsupportedOperationException("verifySession not implemented");
+    }
+
+    default void audit(SecurityContext context, String category, String action, String outcome, String details) {
+        // no-op default; concrete kernels may forward to AuditService
+    }
 }

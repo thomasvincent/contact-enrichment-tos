@@ -170,6 +170,10 @@ spring:
   jpa:
     show-sql: true
 
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+
   security:
     require-ssl: false
 

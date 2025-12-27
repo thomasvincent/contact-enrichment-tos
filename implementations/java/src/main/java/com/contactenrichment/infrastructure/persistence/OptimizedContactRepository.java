@@ -58,20 +58,27 @@ public class OptimizedContactRepository implements ContactRepository {
      */
     @Override
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    @Cacheable(value = "contacts", key = "#id + '_' + #context.principalId", unless = "#result == null")
+    // Cache key includes id + principalId (SpEL uses #root.args[1]) to avoid param-name reliance
+    @Cacheable(value = "contacts", key = "#id + '_' + #root.args[1].principalId", unless = "#result == null")
     public Optional<Contact> findById(UUID id, SecurityContext context) {
         // Set RLS context
         applySecurityContext(context);
 
-        log.debug("Finding contact: id={}, principal={}", id, context.getPrincipalId());
+        if (log.isDebugEnabled()) {
+            log.debug("Finding contact: id={}, principal={}", id, context.getPrincipalId());
+        }
 
         // Use find() which leverages L1/L2 cache
         Contact contact = entityManager.find(Contact.class, id);
 
         if (contact != null) {
-            log.info("Contact retrieved: id={}, principal={}", id, context.getPrincipalId());
+            if (log.isInfoEnabled()) {
+                log.info("Contact retrieved: id={}, principal={}", id, context.getPrincipalId());
+            }
         } else {
-            log.debug("Contact not found or access denied: id={}", id);
+            if (log.isDebugEnabled()) {
+                log.debug("Contact not found or access denied: id={}", id);
+            }
         }
 
         return Optional.ofNullable(contact);
@@ -84,11 +91,14 @@ public class OptimizedContactRepository implements ContactRepository {
      */
     @Override
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    @Cacheable(value = "contactsByEmail", key = "#emailHash + '_' + #context.principalId", unless = "#result == null")
+    // Cache key uses Base64(emailHash) + principalId to keep caches tenant-aware
+    @Cacheable(value = "contactsByEmail", key = "T(java.util.Base64).getEncoder().encodeToString(#emailHash) + '_' + #root.args[1].principalId", unless = "#result == null")
     public Optional<Contact> findByEmailHash(byte[] emailHash, SecurityContext context) {
         applySecurityContext(context);
 
-        log.debug("Finding contact by email hash, principal={}", context.getPrincipalId());
+        if (log.isDebugEnabled()) {
+            log.debug("Finding contact by email hash, principal={}", context.getPrincipalId());
+        }
 
         var query = entityManager.createQuery(
             "SELECT c FROM Contact c WHERE c.canonicalEmailHash = :hash",
@@ -101,8 +111,10 @@ public class OptimizedContactRepository implements ContactRepository {
 
         if (!results.isEmpty()) {
             Contact contact = results.get(0);
-            log.info("Contact retrieved by email hash: id={}, principal={}",
-                contact.getId(), context.getPrincipalId());
+            if (log.isInfoEnabled()) {
+                log.info("Contact retrieved by email hash: id={}, principal={}",
+                    contact.getId(), context.getPrincipalId());
+            }
             return Optional.of(contact);
         }
 
@@ -124,15 +136,18 @@ public class OptimizedContactRepository implements ContactRepository {
         if (contact.getVersion() == 1L) {
             // New contact - persist
             entityManager.persist(contact);
-            log.info("Contact created: id={}, principal={}",
-                contact.getId(), context.getPrincipalId());
+            if (log.isInfoEnabled()) {
+                log.info("Contact created: id={}, principal={}",
+                    contact.getId(), context.getPrincipalId());
+            }
         } else {
-            // Existing contact - merge with optimistic lock check
-            // Lock mode ensures version is checked
-            entityManager.lock(contact, LockModeType.OPTIMISTIC);
+            // Existing contact - rely on @Version via merge for optimistic check
+            // Human note: JPA/Hibernate verifies the version on update; no explicit lock needed here
             entityManager.merge(contact);
-            log.info("Contact updated: id={}, version={}, principal={}",
-                contact.getId(), contact.getVersion(), context.getPrincipalId());
+            if (log.isInfoEnabled()) {
+                log.info("Contact updated: id={}, version={}, principal={}",
+                    contact.getId(), contact.getVersion(), context.getPrincipalId());
+            }
         }
 
         // Flush to database immediately for consistency
@@ -154,14 +169,18 @@ public class OptimizedContactRepository implements ContactRepository {
         Contact contact = entityManager.find(Contact.class, id);
 
         if (contact == null) {
-            log.warn("Cannot delete - contact not found or access denied: id={}", id);
+            if (log.isWarnEnabled()) {
+                log.warn("Cannot delete - contact not found or access denied: id={}", id);
+            }
             throw new IllegalArgumentException("Contact not found: " + id);
         }
 
         entityManager.remove(contact);
         entityManager.flush();
 
-        log.warn("Contact deleted: id={}, principal={}", id, context.getPrincipalId());
+        if (log.isWarnEnabled()) {
+            log.warn("Contact deleted: id={}, principal={}", id, context.getPrincipalId());
+        }
     }
 
     /**
@@ -197,23 +216,17 @@ public class OptimizedContactRepository implements ContactRepository {
             throw new SecurityException("Invalid security context");
         }
 
-        // Set PostgreSQL session variables for RLS
-        entityManager.createNativeQuery(
-            "SET LOCAL app.clearance_conf = :conf"
-        ).setParameter("conf", context.getClearance().getConfidentiality().ordinal())
-         .executeUpdate();
+        // Delegate to shared utility to avoid duplication
+        RlsSessionUtil.applySecurityContext(entityManager, context);
 
-        entityManager.createNativeQuery(
-            "SET LOCAL app.clearance_integ = :integ"
-        ).setParameter("integ", context.getClearance().getIntegrity().ordinal())
-         .executeUpdate();
-
-        entityManager.createNativeQuery(
-            "SET LOCAL app.principal_id = :principalId"
-        ).setParameter("principalId", context.getPrincipalId().toString())
-         .executeUpdate();
-
-        log.debug("Applied RLS context: principal={}, clearance={}",
-            context.getPrincipalId(), context.getClearance());
+        if (log.isDebugEnabled()) {
+            String compartments = String.join(",",
+                (context.getCompartments() != null && !context.getCompartments().isEmpty())
+                    ? context.getCompartments()
+                    : context.getClearance().getCompartments()
+            );
+            log.debug("Applied RLS context: principal={}, clearance={}, compartments={}",
+                context.getPrincipalId(), context.getClearance(), compartments);
+        }
     }
 }

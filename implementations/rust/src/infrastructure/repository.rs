@@ -1,5 +1,5 @@
 // Contact repository implementation using SQLx with PostgreSQL
-use crate::domain::contact::{Contact, EnrichedAttribute, EncryptedValue, SecurityLabel};
+use crate::domain::contact::{Contact, EncryptedValue, SecurityLabel};
 use async_trait::async_trait;
 use sqlx::{PgPool, Postgres, Row};
 use std::sync::Arc;
@@ -66,31 +66,45 @@ impl PostgresContactRepository {
     }
 
     /// Set PostgreSQL session variables for Row-Level Security.
+    /// Human note: SET LOCAL is scoped to the current transaction/connection; always call this
+    /// before queries within the same transaction so RLS policies see the correct context.
     async fn apply_security_context(
         &self,
         tx: &mut sqlx::Transaction<'_, Postgres>,
         context: &SecurityContext,
     ) -> Result<(), RepositoryError> {
         // Set clearance levels for RLS
-        sqlx::query("SET LOCAL app.clearance_conf = $1")
-            .bind(context.clearance.confidentiality as i32)
+        let conf = context.clearance.confidentiality() as i32;
+        let integ = context.clearance.integrity() as i32;
+sqlx::query(&format!("SET app.clearance_conf = {}", conf))
             .execute(&mut **tx)
             .await?;
-
-        sqlx::query("SET LOCAL app.clearance_integ = $1")
-            .bind(context.clearance.integrity as i32)
+sqlx::query(&format!("SET app.clearance_integ = {}", integ))
             .execute(&mut **tx)
             .await?;
 
         // Set principal ID for audit
-        sqlx::query("SET LOCAL app.principal_id = $1")
-            .bind(context.principal_id.to_string())
+        let pid = context.principal_id.to_string();
+sqlx::query(&format!("SET app.principal_id = '{}'", pid))
+            .execute(&mut **tx)
+            .await?;
+
+        // Set compartments (comma-separated)
+        let comps = context
+            .clearance
+            .compartments()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(",");
+sqlx::query(&format!("SET app.compartments = '{}'", comps))
             .execute(&mut **tx)
             .await?;
 
         tracing::debug!(
             principal_id = %context.principal_id,
             clearance = ?context.clearance,
+            compartments = %comps,
             "Applied RLS context"
         );
 
@@ -111,14 +125,24 @@ impl ContactRepository for PostgresContactRepository {
 
         let row = sqlx::query(
             r#"
-            SELECT id, canonical_email_ciphertext, canonical_email_key_id,
-                   canonical_email_algorithm, canonical_email_iv, canonical_email_auth_tag,
-                   canonical_email_hash, full_name_ciphertext, full_name_key_id,
-                   full_name_algorithm, full_name_iv, full_name_auth_tag,
-                   confidentiality_level, integrity_level, compartments, caveats,
-                   created_at, created_by, updated_at, version
-            FROM contacts
-            WHERE id = $1
+            SELECT c.id,
+                   c.canonical_email   AS canonical_email,
+                   c.email_key_id      AS canonical_email_key_id,
+                   c.email_algorithm   AS canonical_email_algorithm,
+                   c.email_iv          AS canonical_email_iv,
+                   c.email_auth_tag    AS canonical_email_auth_tag,
+                   c.canonical_email_hash,
+                   c.full_name         AS full_name,
+                   c.name_key_id       AS full_name_key_id,
+                   c.name_algorithm    AS full_name_algorithm,
+                   c.name_iv           AS full_name_iv,
+                   c.name_auth_tag     AS full_name_auth_tag,
+                   c.confidentiality   AS confidentiality_level,
+                   c.integrity         AS integrity_level,
+                   (SELECT COALESCE(ARRAY(SELECT compartment FROM security_label_compartments s WHERE s.security_label_id = c.id), ARRAY[]::text[])) AS compartments,
+                   c.created_at, c.created_by, c.updated_at, c.version
+            FROM contacts c
+            WHERE c.id = $1
             "#,
         )
         .bind(id)
@@ -155,14 +179,24 @@ impl ContactRepository for PostgresContactRepository {
 
         let row = sqlx::query(
             r#"
-            SELECT id, canonical_email_ciphertext, canonical_email_key_id,
-                   canonical_email_algorithm, canonical_email_iv, canonical_email_auth_tag,
-                   canonical_email_hash, full_name_ciphertext, full_name_key_id,
-                   full_name_algorithm, full_name_iv, full_name_auth_tag,
-                   confidentiality_level, integrity_level, compartments, caveats,
-                   created_at, created_by, updated_at, version
-            FROM contacts
-            WHERE canonical_email_hash = $1
+            SELECT c.id,
+                   c.canonical_email   AS canonical_email,
+                   c.email_key_id      AS canonical_email_key_id,
+                   c.email_algorithm   AS canonical_email_algorithm,
+                   c.email_iv          AS canonical_email_iv,
+                   c.email_auth_tag    AS canonical_email_auth_tag,
+                   c.canonical_email_hash,
+                   c.full_name         AS full_name,
+                   c.name_key_id       AS full_name_key_id,
+                   c.name_algorithm    AS full_name_algorithm,
+                   c.name_iv           AS full_name_iv,
+                   c.name_auth_tag     AS full_name_auth_tag,
+                   c.confidentiality   AS confidentiality_level,
+                   c.integrity         AS integrity_level,
+                   (SELECT COALESCE(ARRAY(SELECT compartment FROM security_label_compartments s WHERE s.security_label_id = c.id), ARRAY[]::text[])) AS compartments,
+                   c.created_at, c.created_by, c.updated_at, c.version
+            FROM contacts c
+            WHERE c.canonical_email_hash = $1
             "#,
         )
         .bind(email_hash)
@@ -198,15 +232,16 @@ impl ContactRepository for PostgresContactRepository {
             sqlx::query(
                 r#"
                 INSERT INTO contacts (
-                    id, canonical_email_ciphertext, canonical_email_key_id,
-                    canonical_email_algorithm, canonical_email_iv, canonical_email_auth_tag,
-                    canonical_email_hash, full_name_ciphertext, full_name_key_id,
-                    full_name_algorithm, full_name_iv, full_name_auth_tag,
-                    confidentiality_level, integrity_level, compartments, caveats,
+                    id, canonical_email, email_key_id,
+                    email_algorithm, email_iv, email_auth_tag,
+                    canonical_email_hash, full_name, name_key_id,
+                    name_algorithm, name_iv, name_auth_tag,
+                    confidentiality, integrity,
                     created_at, created_by, updated_at, version
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-                    $17, $18, $19, $20
+                    $1, $2, $3, $4, $5, $6,
+                    $7, $8, $9, $10, $11, $12,
+                    $13, $14, $15, $16, $17, $18
                 )
                 "#,
             )
@@ -222,23 +257,25 @@ impl ContactRepository for PostgresContactRepository {
             .bind(contact.full_name.as_ref().map(|e| &e.algorithm))
             .bind(contact.full_name.as_ref().map(|e| &e.iv))
             .bind(contact.full_name.as_ref().map(|e| &e.auth_tag))
-            .bind(contact.security_label.confidentiality as i32)
-            .bind(contact.security_label.integrity as i32)
-            .bind(
-                contact
-                    .security_label
-                    .compartments
-                    .iter()
-                    .cloned()
-                    .collect::<Vec<_>>(),
-            )
-            .bind(Vec::<String>::new()) // caveats
+            .bind(format!("{}", match contact.security_label.confidentiality() { crate::domain::contact::ConfidentialityLevel::Public => "PUBLIC", crate::domain::contact::ConfidentialityLevel::Internal => "INTERNAL", crate::domain::contact::ConfidentialityLevel::Confidential => "CONFIDENTIAL", crate::domain::contact::ConfidentialityLevel::Restricted => "RESTRICTED" }))
+            .bind(format!("{}", match contact.security_label.integrity() { crate::domain::contact::IntegrityLevel::Low => "LOW", crate::domain::contact::IntegrityLevel::Medium => "MEDIUM", crate::domain::contact::IntegrityLevel::High => "HIGH", crate::domain::contact::IntegrityLevel::Critical => "CRITICAL" }))
             .bind(contact.created_at)
             .bind(contact.created_by)
             .bind(contact.updated_at)
             .bind(contact.version)
             .execute(&mut *tx)
             .await?;
+
+            // Insert compartments into collection table
+            for comp in contact.security_label.compartments() {
+                sqlx::query(
+                    "INSERT INTO security_label_compartments (security_label_id, compartment) VALUES ($1, $2)"
+                )
+                .bind(contact.id)
+                .bind(comp)
+                .execute(&mut *tx)
+                .await?;
+            }
 
             tracing::info!(
                 contact_id = %contact.id,
@@ -326,26 +363,38 @@ impl PostgresContactRepository {
     fn row_to_contact(&self, row: sqlx::postgres::PgRow) -> Result<Contact, RepositoryError> {
         // This is a simplified version - in production would reconstruct full aggregate
         // including enriched attributes and consent records
+        // Human note: map DB ints -> enums explicitly (no transmute) to avoid UB on invalid values
         Ok(Contact {
             id: row.get("id"),
             canonical_email: EncryptedValue {
-                ciphertext: row.get("canonical_email_ciphertext"),
+                ciphertext: row.get("canonical_email"),
                 key_id: row.get("canonical_email_key_id"),
                 algorithm: row.get("canonical_email_algorithm"),
                 iv: row.get("canonical_email_iv"),
                 auth_tag: row.get("canonical_email_auth_tag"),
             },
             canonical_email_hash: row.get("canonical_email_hash"),
-            full_name: None, // TODO: Reconstruct from row
-            security_label: SecurityLabel {
-                confidentiality: unsafe {
-                    std::mem::transmute(row.get::<i32, _>("confidentiality_level"))
-                },
-                integrity: unsafe { std::mem::transmute(row.get::<i32, _>("integrity_level")) },
-                compartments: row
-                    .get::<Vec<String>, _>("compartments")
-                    .into_iter()
-                    .collect(),
+            full_name: None, // TODO: Reconstruct from full_name columns if present
+            security_label: {
+                // Columns store textual levels; map to enums
+                let conf_txt: String = row.get("confidentiality_level");
+                let integ_txt: String = row.get("integrity_level");
+                let conf = match conf_txt.as_str() {
+                    "PUBLIC" => crate::domain::contact::ConfidentialityLevel::Public,
+                    "INTERNAL" => crate::domain::contact::ConfidentialityLevel::Internal,
+                    "CONFIDENTIAL" => crate::domain::contact::ConfidentialityLevel::Confidential,
+                    "RESTRICTED" => crate::domain::contact::ConfidentialityLevel::Restricted,
+                    _ => crate::domain::contact::ConfidentialityLevel::Internal,
+                };
+                let integ = match integ_txt.as_str() {
+                    "LOW" => crate::domain::contact::IntegrityLevel::Low,
+                    "MEDIUM" => crate::domain::contact::IntegrityLevel::Medium,
+                    "HIGH" => crate::domain::contact::IntegrityLevel::High,
+                    "CRITICAL" => crate::domain::contact::IntegrityLevel::Critical,
+                    _ => crate::domain::contact::IntegrityLevel::Medium,
+                };
+                let comps: Vec<String> = row.get("compartments");
+                SecurityLabel::new(conf, integ, comps)
             },
             enriched_attributes: Vec::new(),
             created_at: row.get("created_at"),

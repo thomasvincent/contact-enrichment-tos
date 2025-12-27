@@ -15,11 +15,13 @@ import java.util.UUID;
  * @since 1.0.0
  */
 @Value
+@lombok.Builder
 public class SecurityContext {
     UUID requestId;
     UUID sessionId;
     UUID principalId;
     SecurityLabel clearance;
+    java.util.Set<String> compartments; // explicit caller compartments (optional)
     String authenticatedVia;
     boolean mfaVerified;
     boolean trustedDevice;
@@ -31,6 +33,7 @@ public class SecurityContext {
     public SecurityContext withPurpose(String purpose) {
         return new SecurityContext(
             requestId, sessionId, principalId, clearance,
+            compartments,
             authenticatedVia, mfaVerified, trustedDevice,
             sourceIp, userAgent, requestedAt, purpose
         );

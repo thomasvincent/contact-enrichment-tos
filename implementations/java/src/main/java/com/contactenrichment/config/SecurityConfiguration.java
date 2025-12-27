@@ -73,7 +73,7 @@ public class SecurityConfiguration {
                     csp.policyDirectives("default-src 'self'; frame-ancestors 'none'")
                 )
                 .frameOptions(frame -> frame.deny())
-                .xssProtection(xss -> xss.block(true))
+                // X-XSS-Protection is obsolete; rely on CSP
                 .httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
                     .maxAgeInSeconds(31536000) // 1 year
