@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/thomasvincent/contact-enrichment-java
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8080"
+  DATABASE_URL: "jdbc:postgresql://postgresql:5432/contact_enrichment"
+  DATABASE_USERNAME: "app"
+  DATABASE_PASSWORD: "app"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  JWT_SECRET: "change-me"
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: contact-enrichment.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
