@@ -239,3 +239,32 @@ See [GitHub Projects](https://github.com/yourusername/contact-enrichment-tos/pro
 ### GitHub Actions
 - Security Scanning job runs on PRs/push; uploads SARIF (Dependency-Check, OSV, Trivy) to code scanning and publishes SBOM artifacts.
 - Nightly Security Scan (`.github/workflows/security-nightly.yml`) refreshes caches and re-runs full scanning daily.
+
+## Deployment
+
+### Docker (local E2E)
+```bash
+cd deployments/docker
+./test.sh   # builds, starts Postgres/Redis/app, waits for health, smokes API
+```
+App is on http://localhost:8080.
+
+### Kubernetes (Helm)
+```bash
+helm upgrade --install contact-enrichment ./deployments/helm/contact-enrichment \
+  --set image.repository=ghcr.io/thomasvincent/contact-enrichment-java \
+  --set image.tag=latest \
+  --set env.DATABASE_URL="jdbc:postgresql://<pg-host>:5432/contact_enrichment" \
+  --set env.DATABASE_USERNAME=app --set env.DATABASE_PASSWORD=app \
+  --set env.REDIS_HOST=<redis-host> --set env.REDIS_PORT=6379 \
+  --set env.JWT_SECRET=change-me
+```
+
+### Nomad
+```bash
+nomad run deployments/nomad/contact-enrichment.nomad.hcl \
+  -var NOMAD_DATABASE_URL=jdbc:postgresql://<pg-host>:5432/contact_enrichment \
+  -var NOMAD_DATABASE_USERNAME=app -var NOMAD_DATABASE_PASSWORD=app \
+  -var NOMAD_REDIS_HOST=redis -var NOMAD_REDIS_PORT=6379 \
+  -var NOMAD_JWT_SECRET=change-me
+```
