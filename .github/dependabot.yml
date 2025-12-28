@@ -6,7 +6,25 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+    rebase-strategy: "auto"
     open-pull-requests-limit: 10
+    reviewers:
+      - "thomasvincent"
+    labels:
+      - "dependencies"
+      - "maven"
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      major-upgrades:
+        applies-to: version-updates
+        update-types:
+          - "major"
+      security-updates:
+        applies-to: security-updates
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -14,6 +32,12 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+    rebase-strategy: "auto"
+    reviewers:
+      - "thomasvincent"
+    labels:
+      - "dependencies"
+      - "ci"
 
   - package-ecosystem: "docker"
     directory: "/implementations/java"
@@ -21,3 +45,19 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+    rebase-strategy: "auto"
+    reviewers:
+      - "thomasvincent"
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      major-upgrades:
+        applies-to: version-updates
+        update-types:
+          - "major"
