@@ -1,0 +1,53 @@
+name: Auto request review from assignees
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, ready_for_review, assigned, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  request-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request review from assignees (including author)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const pr = context.payload.pull_request
+              if (!pr) { core.info('No pull_request payload; exiting.'); return }
+              const owner = context.repo.owner
+              const repo = context.repo.repo
+              const author = pr.user.login
+              // Include all assignees AND the author; de-duplicate
+              const set = new Set([author, ...((pr.assignees || []).map(a => a.login))])
+              const reviewers = Array.from(set)
+              if (reviewers.length === 0) { core.info('No users to request review from.'); return }
+              try {
+                await github.rest.pulls.requestReviewers({ owner, repo, pull_number: pr.number, reviewers })
+                core.info(`Requested review from: ${reviewers.join(', ')}`)
+              } catch (err) {
+                // GitHub API does not permit requesting review from the PR author.
+                core.warning(`Initial request failed: ${err.message || err}`)
+                const filtered = reviewers.filter(u => u !== author)
+                if (filtered.length > 0) {
+                  try {
+                    await github.rest.pulls.requestReviewers({ owner, repo, pull_number: pr.number, reviewers: filtered })
+                    core.info(`Requested review from (author excluded by platform): ${filtered.join(', ')}`)
+                  } catch (err2) {
+                    core.warning(`Retry without author failed: ${err2.message || err2}`)
+                  }
+                }
+                // Leave a comment to indicate the author is considered a reviewer for tracking
+                try {
+                  await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body: `Designated PR author (@${author}) as a reviewer as requested. Note: GitHub may not allow formal review requests to the author.` })
+                } catch (e3) {
+                  core.warning(`Failed to comment about author reviewer: ${e3.message || e3}`)
+                }
+              }
+            } catch (e) {
+              core.warning(`Failed to request reviewers: ${e.message || e}`)
+            }

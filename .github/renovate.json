@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":enableVulnerabilityAlerts",
+    ":prHourlyLimit10",
+    ":semanticCommits"
+  ],
+  "timezone": "UTC",
+  "schedule": ["after 8am on monday"],
+  "packageRules": [
+    {
+      "matchManagers": ["maven", "github-actions", "docker"],
+      "stabilityDays": 3
+    }
+  ]
+}

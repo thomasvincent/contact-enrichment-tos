@@ -19,18 +19,48 @@ spec:
         app.kubernetes.io/name: {{ include "contact-enrichment.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ include "contact-enrichment.serviceAccountName" . }}
+      securityContext:
+{{- toYaml .Values.podSecurityContext | nindent 8 }}
+      imagePullSecrets:
+{{- toYaml .Values.imagePullSecrets | nindent 8 }}
       containers:
         - name: app
+{{- if .Values.image.digest }}
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+{{- else }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+{{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.port }}
               name: http
-          env:
-            {{- range $key, $value := .Values.env }}
-            - name: {{ $key }}
-              value: "{{ $value }}"
+          securityContext:
+{{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if or .Values.envFrom.configMapName .Values.envFrom.secretName }}
+          envFrom:
+            {{- if .Values.envFrom.configMapName }}
+            - configMapRef:
+                name: {{ .Values.envFrom.configMapName }}
             {{- end }}
+            {{- if .Values.envFrom.secretName }}
+            - secretRef:
+                name: {{ .Values.envFrom.secretName }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.extraEnv }}
+          env:
+          {{- range $k, $v := .Values.extraEnv }}
+            - name: {{ $k }}
+              value: "{{ $v }}"
+          {{- end }}
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /api/v1/health

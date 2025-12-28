@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   db:
     image: postgres:15
@@ -36,6 +35,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: dev-secret
+      SELINUX_ENFORCE_CHECK: "false"
+      APP_SKIP_SELINUX_CHECK: "true"
     depends_on:
       db:
         condition: service_healthy
@@ -43,11 +44,6 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 30
 
 volumes:
   pgdata:
