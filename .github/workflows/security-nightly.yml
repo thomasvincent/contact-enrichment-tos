@@ -75,7 +75,7 @@ jobs:
             implementations/java/target/sbom/bom.json
 
       - name: Run OSV-Scanner (source + SBOM)
-        uses: google/osv-scanner-action@v1
+        uses: google/osv-scanner-action@v2.0.0
         with:
           scan-args: |
             --format sarif --output osv-nightly.sarif \
