@@ -8,14 +8,14 @@ cd "$compose_dir"
 echo "[+] Building and starting docker-compose stack"
 docker compose up -d --build
 
-# Wait for app to be healthy
-printf "[+] Waiting for app health"
-for i in {1..90}; do
-  if docker compose ps --format json | jq -e '.[] | select(.Service=="app" and .Health=="healthy")' >/dev/null 2>&1; then
-    echo ""; echo "[+] App is healthy"; break
+# Wait for app HTTP health (distroless image has no container healthcheck)
+echo "[+] Waiting for app HTTP health at http://localhost:8080/api/v1/health"
+for i in {1..60}; do
+  if curl -fsS http://localhost:8080/api/v1/health >/dev/null 2>&1; then
+    echo "[+] App is healthy"; break
   fi
-  printf "."; sleep 2
-  if [[ $i -eq 90 ]]; then echo ""; echo "[-] App failed to become healthy"; docker compose logs app; exit 1; fi
+  sleep 5
+  if [[ $i -eq 60 ]]; then echo "[-] App failed to become healthy"; docker compose logs app; exit 1; fi
 done
 
 # Hit health endpoint

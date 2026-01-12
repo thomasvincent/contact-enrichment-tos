@@ -1,0 +1,41 @@
+# Example production values overriding defaults
+replicaCount: 3
+
+image:
+  repository: ghcr.io/thomasvincent/contact-enrichment-java
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-creds
+
+service:
+  type: ClusterIP
+  port: 8080
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  enabled: true
+  minAvailable: 2
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+
+# Reference externally created Secret/ConfigMap
+envFrom:
+  secretName: contact-enrichment-secret
+  configMapName: contact-enrichment-config
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1
+    memory: 1Gi

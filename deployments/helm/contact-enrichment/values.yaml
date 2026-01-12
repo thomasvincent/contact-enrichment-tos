@@ -4,6 +4,16 @@ image:
   repository: ghcr.io/thomasvincent/contact-enrichment-java
   tag: latest
   pullPolicy: IfNotPresent
+  digest: "" # optional digest to pin
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
 
 service:
   type: ClusterIP
@@ -17,21 +27,65 @@ resources:
     cpu: 100m
     memory: 256Mi
 
+podSecurityContext:
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
 nodeSelector: {}
 
 tolerations: []
 
 affinity: {}
 
-env:
-  SPRING_PROFILES_ACTIVE: "prod"
-  SERVER_PORT: "8080"
-  DATABASE_URL: "jdbc:postgresql://postgresql:5432/contact_enrichment"
-  DATABASE_USERNAME: "app"
-  DATABASE_PASSWORD: "app"
-  REDIS_HOST: "redis"
-  REDIS_PORT: "6379"
-  JWT_SECRET: "change-me"
+envFrom:
+  configMapName: ""
+  secretName: ""
+
+extraEnv: {}
+
+# Optional embedded configuration (prefer external secrets/configs in production)
+config: {}
+secrets:
+  enabled: false
+  data: {}
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - port: 8080
+  egress:
+    - to: []
+      ports: []
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
 
 ingress:
   enabled: false
