@@ -1,0 +1,8 @@
+# Default owner
+* @thomasvincent
+
+# Specific areas
+implementations/java/ @thomasvincent
+deployments/helm/ @thomasvincent
+deployments/nomad/ @thomasvincent
+.github/workflows/ @thomasvincent

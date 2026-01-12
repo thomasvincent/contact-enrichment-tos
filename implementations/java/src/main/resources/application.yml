@@ -166,6 +166,8 @@ spring:
   config:
     activate:
       on-profile: dev
+  main:
+    allow-bean-definition-overriding: true
 
   jpa:
     show-sql: true

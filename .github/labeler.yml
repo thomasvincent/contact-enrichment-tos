@@ -1,0 +1,14 @@
+java:
+  - "implementations/java/**"
+helm:
+  - "deployments/helm/**"
+nomad:
+  - "deployments/nomad/**"
+ci:
+  - ".github/workflows/**"
+security:
+  - "**/pom.xml"
+  - "**/Dockerfile"
+  - "deployments/helm/**"
+docs:
+  - "**/*.md"

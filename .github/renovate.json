@@ -1,0 +1,66 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":enableVulnerabilityAlerts",
+    ":prHourlyLimit10",
+    ":semanticCommits"
+  ],
+  "timezone": "UTC",
+  "labels": ["dependencies"],
+  "reviewers": ["thomasvincent"],
+  "dependencyDashboard": true,
+  "schedule": ["after 8am on monday"],
+  "prConcurrentLimit": 10,
+  "assignees": ["thomasvincent"],
+  "packageRules": [
+    {
+      "matchManagers": ["maven", "github-actions", "docker"],
+      "stabilityDays": 3
+    },
+    {
+      "description": "Automerge non-breaking (patch/minor) after passing checks",
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "labels": ["dependencies", "automerge"]
+    },
+    {
+      "description": "Group Maven patch/minor",
+      "matchManagers": ["maven"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "maven (minor/patch)",
+      "groupSlug": "maven-minor-patch"
+    },
+    {
+      "description": "Group Docker patch/minor",
+      "matchManagers": ["docker"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "docker (minor/patch)",
+      "groupSlug": "docker-minor-patch"
+    },
+    {
+      "description": "Group GitHub Actions patch/minor",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "actions (minor/patch)",
+      "groupSlug": "actions-minor-patch"
+    },
+    {
+      "description": "Major updates require manual approval",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "automerge": false,
+      "labels": ["dependencies", "major-update", "needs-approval"]
+    },
+    {
+      "description": "Prioritize security advisories and auto-merge when safe",
+      "matchManagers": ["maven", "docker", "github-actions"],
+      "matchLabels": ["security"],
+      "automerge": true,
+      "platformAutomerge": true,
+      "labels": ["dependencies", "security", "automerge"]
+    }
+  ]
+}
