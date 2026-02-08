@@ -1,4 +1,5 @@
 """FastAPI routes for contact operations."""
+
 import logging
 from typing import List, Optional
 from uuid import UUID
@@ -158,7 +159,7 @@ async def create_contact(
     """Create a new contact."""
     from uuid import uuid4
 
-    from contact_enrichment.domain.contact import Contact, EncryptedValue
+    from contact_enrichment.domain.contact import Contact
 
     logger.info(f"Creating contact with email: {_mask_email(request.email)}")
 

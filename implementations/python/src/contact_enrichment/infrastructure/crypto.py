@@ -1,4 +1,5 @@
 """Cryptographic service using cryptography library for AES-256-GCM."""
+
 import hashlib
 import logging
 import secrets
@@ -129,7 +130,6 @@ class AesGcmCryptoService:
         In production, this would call AWS KMS or similar:
         kms_client.encrypt(KeyId=cmk_id, Plaintext=dek)
         """
-        import base64
 
         # Generate unique DEK ID
         dek_id = f"dek_{key_id}_{secrets.token_urlsafe(16)}"

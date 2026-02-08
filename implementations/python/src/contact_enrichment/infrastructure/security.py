@@ -1,4 +1,5 @@
 """Security kernel for MAC enforcement."""
+
 import logging
 from typing import Protocol
 
@@ -88,9 +89,7 @@ class TrustedSecurityKernel:
                 f"principal={context.principal_id}, required={data_label.compartments}, "
                 f"actual={context.clearance.compartments}"
             )
-            raise AccessDeniedError(
-                "Access denied: Missing required compartments (need-to-know)"
-            )
+            raise AccessDeniedError("Access denied: Missing required compartments (need-to-know)")
 
         logger.info(
             f"AUTHORIZATION GRANTED [{request_id}]: principal={context.principal_id}, "
@@ -193,9 +192,7 @@ class TrustedSecurityKernel:
                 f"label - principal={context.principal_id}, contactLabel={contact_label}, "
                 f"attributeLabel={attribute_label}"
             )
-            raise AccessDeniedError(
-                "Access denied: Attribute security label exceeds contact label"
-            )
+            raise AccessDeniedError("Access denied: Attribute security label exceeds contact label")
 
         logger.info(
             f"AUTHORIZATION GRANTED [{request_id}]: principal={context.principal_id}, "

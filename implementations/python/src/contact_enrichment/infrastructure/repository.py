@@ -1,9 +1,10 @@
 """Contact repository implementation using SQLAlchemy with PostgreSQL."""
+
 import logging
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from contact_enrichment.domain.contact import Contact, EncryptedValue, SecurityLabel
@@ -54,16 +55,13 @@ class ContactRepository:
             f"clearance={context.clearance}"
         )
 
-    async def find_by_id(
-        self, contact_id: UUID, context: SecurityContext
-    ) -> Optional[Contact]:
+    async def find_by_id(self, contact_id: UUID, context: SecurityContext) -> Optional[Contact]:
         """Find contact by ID with RLS enforcement."""
         await self._apply_security_context(context)
 
         # Simplified query - in production would use SQLAlchemy ORM models
         result = await self.session.execute(
-            text(
-                """
+            text("""
                 SELECT id, canonical_email_ciphertext, canonical_email_key_id,
                        canonical_email_algorithm, canonical_email_iv,
                        canonical_email_auth_tag, canonical_email_hash,
@@ -71,8 +69,7 @@ class ContactRepository:
                        created_at, created_by, updated_at, version
                 FROM contacts
                 WHERE id = :contact_id
-                """
-            ),
+                """),
             {"contact_id": contact_id},
         )
 
@@ -93,8 +90,7 @@ class ContactRepository:
         await self._apply_security_context(context)
 
         result = await self.session.execute(
-            text(
-                """
+            text("""
                 SELECT id, canonical_email_ciphertext, canonical_email_key_id,
                        canonical_email_algorithm, canonical_email_iv,
                        canonical_email_auth_tag, canonical_email_hash,
@@ -102,8 +98,7 @@ class ContactRepository:
                        created_at, created_by, updated_at, version
                 FROM contacts
                 WHERE canonical_email_hash = :email_hash
-                """
-            ),
+                """),
             {"email_hash": email_hash},
         )
 
@@ -121,8 +116,7 @@ class ContactRepository:
         if contact.version == 1:
             # Insert new contact
             await self.session.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO contacts (
                         id, canonical_email_ciphertext, canonical_email_key_id,
                         canonical_email_algorithm, canonical_email_iv,
@@ -134,8 +128,7 @@ class ContactRepository:
                         :email_hash, :conf, :integ, :compartments,
                         :created_at, :created_by, :updated_at, :version
                     )
-                    """
-                ),
+                    """),
                 {
                     "id": contact.id,
                     "ciphertext": contact.canonical_email.ciphertext,
@@ -157,13 +150,11 @@ class ContactRepository:
         else:
             # Update existing contact with optimistic locking
             result = await self.session.execute(
-                text(
-                    """
+                text("""
                     UPDATE contacts
                     SET updated_at = :updated_at, version = version + 1
                     WHERE id = :id AND version = :version
-                    """
-                ),
+                    """),
                 {
                     "id": contact.id,
                     "updated_at": contact.updated_at,
@@ -192,9 +183,7 @@ class ContactRepository:
 
         logger.warning(f"Contact deleted: id={contact_id}, principal={context.principal_id}")
 
-    async def exists_by_email_hash(
-        self, email_hash: bytes, context: SecurityContext
-    ) -> bool:
+    async def exists_by_email_hash(self, email_hash: bytes, context: SecurityContext) -> bool:
         """Check if contact exists by email hash."""
         await self._apply_security_context(context)
 
@@ -207,7 +196,6 @@ class ContactRepository:
 
     def _row_to_contact(self, row) -> Contact:
         """Convert database row to Contact domain model."""
-        from datetime import datetime
 
         encrypted_email = EncryptedValue(
             ciphertext=row.canonical_email_ciphertext,
