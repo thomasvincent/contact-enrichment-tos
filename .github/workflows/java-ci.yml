@@ -132,6 +132,24 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Write Maven toolchains.xml (JDK 21)
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/toolchains.xml << 'EOF'
+          <toolchains>
+            <toolchain>
+              <type>jdk</type>
+              <provides>
+                <version>21</version>
+                <vendor>any</vendor>
+              </provides>
+              <configuration>
+                <jdkHome>${JAVA_HOME}</jdkHome>
+              </configuration>
+            </toolchain>
+          </toolchains>
+          EOF
+
       - name: Cache SonarQube packages
         uses: actions/cache@v4
         with:

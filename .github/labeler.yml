@@ -12,10 +12,11 @@ ci:
     - any-glob-to-any-file: ".github/workflows/**"
 security:
   - changed-files:
-    - any-glob-to-any-file:
-      - "**/pom.xml"
-      - "**/Dockerfile"
-      - "deployments/helm/**"
+    - any-glob-to-any-file: "**/pom.xml"
+  - changed-files:
+    - any-glob-to-any-file: "**/Dockerfile"
+  - changed-files:
+    - any-glob-to-any-file: "deployments/helm/**"
 docs:
   - changed-files:
     - any-glob-to-any-file: "**/*.md"
