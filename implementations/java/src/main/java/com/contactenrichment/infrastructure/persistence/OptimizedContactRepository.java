@@ -135,7 +135,10 @@ public class OptimizedContactRepository implements ContactRepository {
     public void save(Contact contact, SecurityContext context) {
         applySecurityContext(context);
 
-        if (contact.getVersion() == 1L) {
+        // Check if entity is already managed by checking if it exists in DB
+        Contact existing = entityManager.find(Contact.class, contact.getId());
+
+        if (existing == null) {
             // New contact - persist
             entityManager.persist(contact);
             if (log.isInfoEnabled()) {
@@ -143,8 +146,7 @@ public class OptimizedContactRepository implements ContactRepository {
                     contact.getId(), context.getPrincipalId());
             }
         } else {
-            // Existing contact - rely on @Version via merge for optimistic check
-            // Human note: JPA/Hibernate verifies the version on update; no explicit lock needed here
+            // Existing contact - merge to reattach and update
             entityManager.merge(contact);
             if (log.isInfoEnabled()) {
                 log.info("Contact updated: id={}, version={}, principal={}",
