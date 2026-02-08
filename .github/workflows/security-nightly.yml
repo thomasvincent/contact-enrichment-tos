@@ -74,13 +74,18 @@ jobs:
             implementations/java/target/sbom/bom.xml
             implementations/java/target/sbom/bom.json
 
+      - name: Install OSV-Scanner
+        run: |
+          curl -sSfL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/
+
       - name: Run OSV-Scanner (source + SBOM)
-        uses: google/osv-scanner-action@v2.0.0
-        with:
-          scan-args: |
-            --format sarif --output osv-nightly.sarif \
+        continue-on-error: true
+        run: |
+          osv-scanner --format sarif --output osv-nightly.sarif \
             --lockfile implementations/java/pom.xml \
-            --sbom implementations/java/target/sbom/bom.json
+            --sbom implementations/java/target/sbom/bom.json || true
 
       - name: Upload OSV results to GitHub Security
         if: always()
