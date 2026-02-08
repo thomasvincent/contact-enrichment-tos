@@ -135,23 +135,13 @@ public class OptimizedContactRepository implements ContactRepository {
     public void save(Contact contact, SecurityContext context) {
         applySecurityContext(context);
 
-        // Check if entity is already managed by checking if it exists in DB
-        Contact existing = entityManager.find(Contact.class, contact.getId());
+        // Use merge for both new and existing entities
+        // merge() handles both cases and returns the managed entity
+        Contact merged = entityManager.merge(contact);
 
-        if (existing == null) {
-            // New contact - persist
-            entityManager.persist(contact);
-            if (log.isInfoEnabled()) {
-                log.info("Contact created: id={}, principal={}",
-                    contact.getId(), context.getPrincipalId());
-            }
-        } else {
-            // Existing contact - merge to reattach and update
-            entityManager.merge(contact);
-            if (log.isInfoEnabled()) {
-                log.info("Contact updated: id={}, version={}, principal={}",
-                    contact.getId(), contact.getVersion(), context.getPrincipalId());
-            }
+        if (log.isInfoEnabled()) {
+            log.info("Contact saved: id={}, version={}, principal={}",
+                merged.getId(), merged.getVersion(), context.getPrincipalId());
         }
 
         // Flush to database immediately for consistency
