@@ -245,7 +245,7 @@ jobs:
 
       - name: Check License Headers
         run: |
-          mvn -f implementations/java/pom.xml license:check
+          mvn -f implementations/java/pom.xml license:check-file-header
 
       - name: Verify Commit Message Format
         if: github.event_name == 'pull_request'
