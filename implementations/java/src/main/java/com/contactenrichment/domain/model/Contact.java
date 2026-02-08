@@ -135,7 +135,7 @@ public class Contact {
         this.createdBy = createdBy;
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
-        this.version = 1L;
+        // version is managed by JPA - leave it null for new entities
     }
 
     /**

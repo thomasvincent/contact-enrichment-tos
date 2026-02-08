@@ -128,6 +128,9 @@ public class OptimizedContactRepository implements ContactRepository {
      *
      * Evicts both ID and email hash caches to maintain consistency.
      * Uses optimistic locking for concurrent modification safety.
+     *
+     * Note: Always uses merge() because Contact.create() produces detached entities
+     * with pre-assigned IDs and versions. merge() handles both new and existing entities.
      */
     @Override
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -135,26 +138,14 @@ public class OptimizedContactRepository implements ContactRepository {
     public void save(Contact contact, SecurityContext context) {
         applySecurityContext(context);
 
-        // Check if entity exists in database (not just in memory)
-        boolean exists = entityManager.createQuery(
-            "SELECT COUNT(c) FROM Contact c WHERE c.id = :id", Long.class)
-            .setParameter("id", contact.getId())
-            .getSingleResult() > 0;
+        // Always use merge - it handles both new and existing detached entities
+        // For new entities: merge() will INSERT
+        // For existing entities: merge() will UPDATE (with version check)
+        Contact merged = entityManager.merge(contact);
 
-        if (exists) {
-            // Existing entity - use merge
-            Contact merged = entityManager.merge(contact);
-            if (log.isInfoEnabled()) {
-                log.info("Contact updated: id={}, version={}, principal={}",
-                    merged.getId(), merged.getVersion(), context.getPrincipalId());
-            }
-        } else {
-            // New entity - use persist
-            entityManager.persist(contact);
-            if (log.isInfoEnabled()) {
-                log.info("Contact created: id={}, principal={}",
-                    contact.getId(), context.getPrincipalId());
-            }
+        if (log.isInfoEnabled()) {
+            log.info("Contact saved: id={}, version={}, principal={}",
+                merged.getId(), merged.getVersion(), context.getPrincipalId());
         }
 
         // Flush to database immediately for consistency
