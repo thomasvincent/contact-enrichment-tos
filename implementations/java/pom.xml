@@ -553,6 +553,21 @@
                 <maven.test.skip>true</maven.test.skip>
                 <quality.skip>true</quality.skip>
             </properties>
+            <build>
+                <plugins>
+                    <!-- Disable toolchains plugin for CI environments without toolchains.xml -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-toolchains-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
 
         <!-- CI profile: enable quality gates explicitly -->
