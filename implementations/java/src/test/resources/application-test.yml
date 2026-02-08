@@ -1,5 +1,8 @@
 # Test configuration for integration tests
 spring:
+  main:
+    allow-bean-definition-overriding: true  # Allow VirtualThreadConfiguration to override Spring Boot's taskScheduler
+
   jpa:
     hibernate:
       ddl-auto: create-drop  # Auto-create schema from entities for tests
