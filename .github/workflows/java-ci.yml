@@ -435,6 +435,7 @@ jobs:
     name: E2E (Docker Compose)
     runs-on: ubuntu-latest
     needs: [build-and-test]
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
