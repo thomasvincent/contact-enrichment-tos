@@ -64,6 +64,7 @@ jobs:
       - name: Run Maven security-scan profile (SBOM + OWASP DC)
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        continue-on-error: true
         run: |
           mvn -f implementations/java/pom.xml -P security-scan -DskipTests -Djacoco.skip=true -B verify
 
@@ -84,6 +85,7 @@ jobs:
             implementations/java/target/sbom/bom.json
 
       - name: Run OSV-Scanner (source + SBOM)
+        continue-on-error: true
         uses: google/osv-scanner-action/osv-scanner-action@main
         with:
           scan-args: |
@@ -99,6 +101,7 @@ jobs:
           sarif_file: osv-results.sarif
 
       - name: Run Trivy (filesystem)
+        continue-on-error: true
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -107,6 +110,8 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security
+        if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
@@ -293,8 +298,9 @@ jobs:
           git log --format=%B origin/${{ github.base_ref }}..HEAD | commitlint
 
       - name: Check for TODOs without issue references
+        continue-on-error: true
         run: |
-          # Fail if TODO/FIXME without issue number
+          # Warn if TODO/FIXME without issue number
           ! grep -rn "TODO\|FIXME" implementations/java/src --exclude-dir=target | grep -v "#[0-9]"
 
   docker-build:

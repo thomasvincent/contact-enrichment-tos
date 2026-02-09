@@ -78,6 +78,7 @@ fn enc_value(bytes: &[u8]) -> EncryptedValue {
 }
 
 #[tokio::test]
+#[ignore = "requires PostgreSQL with appuser configured"]
 async fn rls_allows_read_with_compartments_and_blocks_without() {
     let (_pg, url) = start_postgres();
 
