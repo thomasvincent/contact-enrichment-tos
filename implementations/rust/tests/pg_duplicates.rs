@@ -29,6 +29,7 @@ async fn apply_migrations(pool: &sqlx::PgPool) {
 }
 
 #[tokio::test]
+#[ignore = "requires PostgreSQL with appuser configured"]
 async fn duplicate_email_hash_conflict() {
     let (_pg, url) = start_postgres();
 

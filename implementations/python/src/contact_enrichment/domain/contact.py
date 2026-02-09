@@ -1,4 +1,5 @@
 """Contact aggregate root - Python implementation."""
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -8,6 +9,7 @@ from uuid import UUID, uuid4
 
 class ConfidentialityLevel(Enum):
     """Confidentiality levels for MAC."""
+
     PUBLIC = 0
     INTERNAL = 1
     CONFIDENTIAL = 2
@@ -16,6 +18,7 @@ class ConfidentialityLevel(Enum):
 
 class IntegrityLevel(Enum):
     """Integrity levels for Biba model."""
+
     LOW = 0
     MEDIUM = 1
     HIGH = 2
@@ -25,6 +28,7 @@ class IntegrityLevel(Enum):
 @dataclass(frozen=True)
 class SecurityLabel:
     """Immutable security label for MAC enforcement."""
+
     confidentiality: ConfidentialityLevel
     integrity: IntegrityLevel
     compartments: FrozenSet[str] = field(default_factory=frozenset)
@@ -45,13 +49,14 @@ class SecurityLabel:
             confidentiality=ConfidentialityLevel.CONFIDENTIAL,
             integrity=IntegrityLevel.HIGH,
             compartments=frozenset(["PII"]),
-            handling_caveats=frozenset(["ENCRYPT_AT_REST", "NO_CACHE"])
+            handling_caveats=frozenset(["ENCRYPT_AT_REST", "NO_CACHE"]),
         )
 
 
 @dataclass(frozen=True)
 class EncryptedValue:
     """Encrypted value with metadata."""
+
     ciphertext: bytes
     key_id: str
     algorithm: str = "AES-256-GCM"
@@ -61,6 +66,7 @@ class EncryptedValue:
 
 class AttributeType(Enum):
     """Types of enriched attributes."""
+
     FULL_NAME = "full_name"
     JOB_TITLE = "job_title"
     COMPANY_NAME = "company_name"
@@ -70,12 +76,14 @@ class AttributeType(Enum):
 
 class ConsentType(Enum):
     """Types of consent."""
+
     EXPLICIT_OPT_IN = "explicit_opt_in"
     LEGITIMATE_INTEREST = "legitimate_interest"
 
 
 class LegalBasis(Enum):
     """Legal basis for processing."""
+
     GDPR_ART6_1A_CONSENT = "gdpr_art6_1a"
     GDPR_ART6_1F_LEGITIMATE_INTEREST = "gdpr_art6_1f"
     CCPA_NOTICE = "ccpa_notice"
@@ -84,6 +92,7 @@ class LegalBasis(Enum):
 @dataclass
 class EnrichedAttribute:
     """Enriched attribute with temporal validity."""
+
     id: UUID
     attribute_type: AttributeType
     encrypted_value: EncryptedValue
@@ -103,6 +112,7 @@ class EnrichedAttribute:
 @dataclass
 class ConsentRecord:
     """Consent record for legal basis."""
+
     id: UUID
     consent_type: ConsentType
     legal_basis: LegalBasis
@@ -133,6 +143,7 @@ class Contact:
     - At least one active consent required
     - Security label dominates all attribute labels
     """
+
     id: UUID
     canonical_email: EncryptedValue
     canonical_email_hash: bytes
@@ -233,4 +244,5 @@ class Contact:
 
 class SecurityError(Exception):
     """Security-related error."""
+
     pass

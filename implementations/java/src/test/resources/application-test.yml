@@ -1,0 +1,43 @@
+# Test configuration for integration tests
+spring:
+  main:
+    allow-bean-definition-overriding: true  # Allow VirtualThreadConfiguration to override Spring Boot's taskScheduler
+
+  datasource:
+    hikari:
+      auto-commit: true  # Enable auto-commit for tests to avoid transaction isolation issues
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # Auto-create schema from entities for tests
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        connection:
+          provider_disables_autocommit: false  # Don't disable auto-commit
+
+  flyway:
+    enabled: false  # Disable Flyway for tests since we're using Hibernate auto-ddl
+
+  security:
+    require-ssl: false
+
+server:
+  ssl:
+    enabled: false
+  port: 0  # Random port for tests
+
+logging:
+  level:
+    com.contactenrichment: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.testcontainers: INFO
+
+app:
+  security:
+    selinux:
+      enforce-check: false
+    mfa:
+      required: false

@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ import java.util.UUID;
  * - 10-50ms response time with cache misses
  */
 @Repository
+@Primary
 @RequiredArgsConstructor
 @Slf4j
 public class OptimizedContactRepository implements ContactRepository {
@@ -126,6 +128,9 @@ public class OptimizedContactRepository implements ContactRepository {
      *
      * Evicts both ID and email hash caches to maintain consistency.
      * Uses optimistic locking for concurrent modification safety.
+     *
+     * Note: Always uses merge() because Contact.create() produces detached entities
+     * with pre-assigned IDs and versions. merge() handles both new and existing entities.
      */
     @Override
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -133,21 +138,14 @@ public class OptimizedContactRepository implements ContactRepository {
     public void save(Contact contact, SecurityContext context) {
         applySecurityContext(context);
 
-        if (contact.getVersion() == 1L) {
-            // New contact - persist
-            entityManager.persist(contact);
-            if (log.isInfoEnabled()) {
-                log.info("Contact created: id={}, principal={}",
-                    contact.getId(), context.getPrincipalId());
-            }
-        } else {
-            // Existing contact - rely on @Version via merge for optimistic check
-            // Human note: JPA/Hibernate verifies the version on update; no explicit lock needed here
-            entityManager.merge(contact);
-            if (log.isInfoEnabled()) {
-                log.info("Contact updated: id={}, version={}, principal={}",
-                    contact.getId(), contact.getVersion(), context.getPrincipalId());
-            }
+        // Always use merge - it handles both new and existing detached entities
+        // For new entities: merge() will INSERT
+        // For existing entities: merge() will UPDATE (with version check)
+        Contact merged = entityManager.merge(contact);
+
+        if (log.isInfoEnabled()) {
+            log.info("Contact saved: id={}, version={}, principal={}",
+                merged.getId(), merged.getVersion(), context.getPrincipalId());
         }
 
         // Flush to database immediately for consistency
