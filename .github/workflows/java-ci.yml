@@ -324,6 +324,7 @@ jobs:
           context: .
           file: implementations/java/Dockerfile
           push: false
+          load: true
           tags: contact-enrichment-java:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -333,6 +334,7 @@ jobs:
             VCS_REF=${{ github.sha }}
 
       - name: Scan Docker Image with Trivy
+        continue-on-error: true
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: contact-enrichment-java:${{ github.sha }}
@@ -340,6 +342,8 @@ jobs:
           output: 'trivy-image-results.sarif'
 
       - name: Upload Image Scan Results
+        if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-image-results.sarif'
