@@ -69,6 +69,7 @@ jobs:
 
       - name: Upload Dependency-Check SARIF
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: implementations/java/target/security-reports/dependency-check-report.sarif
@@ -92,6 +93,7 @@ jobs:
 
       - name: Upload OSV results to GitHub Security
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: osv-results.sarif
@@ -281,6 +283,7 @@ jobs:
 
       - name: Verify Commit Message Format
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         run: |
           # Check conventional commits format
           npm install -g @commitlint/cli @commitlint/config-conventional

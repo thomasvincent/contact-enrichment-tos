@@ -1,27 +1,25 @@
 java:
   - changed-files:
-    - any-glob-to-any-file: "implementations/java/**"
+      - any-glob-to-any-file: "implementations/java/**"
 
 helm:
   - changed-files:
-    - any-glob-to-any-file: "deployments/helm/**"
+      - any-glob-to-any-file: "deployments/helm/**"
 
 nomad:
   - changed-files:
-    - any-glob-to-any-file: "deployments/nomad/**"
+      - any-glob-to-any-file: "deployments/nomad/**"
 
 ci:
   - changed-files:
-    - any-glob-to-any-file: ".github/workflows/**"
+      - any-glob-to-any-file: ".github/workflows/**"
 
 security:
   - changed-files:
-    - any-glob-to-any-file: "**/pom.xml"
-  - changed-files:
-    - any-glob-to-any-file: "**/Dockerfile"
-  - changed-files:
-    - any-glob-to-any-file: "deployments/helm/**"
+      - any-glob-to-any-file: "**/pom.xml"
+      - any-glob-to-any-file: "**/Dockerfile"
+      - any-glob-to-any-file: "deployments/helm/**"
 
 docs:
   - changed-files:
-    - any-glob-to-any-file: "**/*.md"
+      - any-glob-to-any-file: "**/*.md"
