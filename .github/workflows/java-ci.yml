@@ -83,7 +83,7 @@ jobs:
             implementations/java/target/sbom/bom.json
 
       - name: Run OSV-Scanner (source + SBOM)
-        uses: google/osv-scanner-action@v1
+        uses: google/osv-scanner-action/osv-scanner-action@main
         with:
           scan-args: |
             --format sarif --output osv-results.sarif \
@@ -285,6 +285,8 @@ jobs:
           # Check conventional commits format
           npm install -g @commitlint/cli @commitlint/config-conventional
           echo "module.exports = {extends: ['@commitlint/config-conventional']}" > commitlint.config.js
+          # Fetch the base branch to ensure origin/${{ github.base_ref }} exists
+          git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
           git log --format=%B origin/${{ github.base_ref }}..HEAD | commitlint
 
       - name: Check for TODOs without issue references
