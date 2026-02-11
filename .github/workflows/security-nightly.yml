@@ -57,7 +57,7 @@ jobs:
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: |
-          ./implementations/java/mvnw -f implementations/java/pom.xml -P security-scan -DskipTests -Djacoco.skip=true -B verify
+          mvn -f implementations/java/pom.xml -P security-scan -DskipTests -Djacoco.skip=true -B verify
 
       - name: Upload Dependency-Check SARIF
         if: always()
